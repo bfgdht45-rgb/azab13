@@ -212,7 +212,7 @@ function MainPage() {
                 الفروع المدعومة
               </h3>
               <div className="flex flex-wrap gap-2">
-                {SUBJECTS.map((s: typeof SUBJECTS[0]) => (
+                {SUBJECTS.map((s) => (
                   <span key={s.id} className="px-2 py-1 bg-white rounded-lg text-xs text-blue-700 border border-blue-100">
                     {s.name}
                   </span>
