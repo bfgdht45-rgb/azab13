@@ -42,7 +42,7 @@ export const mathSolverAPI = {
 
     try {
       const prompt = buildPrompt(request.problem, request.subject, request.language, request.detailLevel);
-      let result: unknown;
+      let result;
 
       if (cfg.provider === 'baseten' || cfg.baseUrl.includes('baseten')) {
         result = await callBasetenDirect(cfg.apiKey, cfg.model, cfg.baseUrl, prompt);
@@ -57,23 +57,20 @@ export const mathSolverAPI = {
         result = generateDemoSolution(request.problem, request.language);
       }
 
-      const resultObj = result as Record<string, unknown>;
-      const steps = (resultObj.steps || []) as Array<Record<string, unknown>>;
-
       return {
         success: true,
         solution: {
           id: Date.now().toString(),
           problemId: 'temp',
-          steps: steps.map((step: Record<string, unknown>, i: number) => ({
-            stepNumber: (step.stepNumber as number) || i + 1,
-            explanation: (step.explanation as string) || (step.description as string) || 'خطوة الحل',
-            equation: (step.equation as string) || '',
-            rule: (step.rule as string) || (step.law as string) || '',
-            isImportant: (step.isImportant as boolean) || false,
+          steps: (result.steps || []).map((step, i) => ({
+            stepNumber: step.stepNumber || i + 1,
+            explanation: step.explanation || step.description || 'خطوة الحل',
+            equation: step.equation || '',
+            rule: step.rule || step.law || '',
+            isImportant: step.isImportant || false,
           })),
-          finalAnswer: (resultObj.finalAnswer as string) || (resultObj.answer as string) || 'لا يوجد إجابة',
-          verification: (resultObj.verification as string) || (resultObj.check as string) || '',
+          finalAnswer: result.finalAnswer || result.answer || 'لا يوجد إجابة',
+          verification: result.verification || result.check || '',
           language: request.language || 'ar',
           solvedAt: new Date(),
         },
@@ -95,7 +92,7 @@ export const mathSolverAPI = {
       latex: 'x^2 + 3x - 5 = 0',
       confidence: 0.95,
       rawText: 'x^2 + 3x - 5 = 0',
-      error: undefined,
+      note: 'OCR demo mode. Type the equation manually for now.',
     };
   },
 
@@ -114,7 +111,7 @@ async function callBasetenDirect(apiKey: string, model: string, baseUrl: string,
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
@@ -151,7 +148,7 @@ async function callOpenAIDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       response_format: { type: 'json_object' },
@@ -173,7 +170,7 @@ async function callGeminiDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       contents: [{ 
         role: 'user', 
-        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' }] 
+        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' }] 
       }],
       generationConfig: { temperature: 0.2, maxOutputTokens: 4000 },
     }),
@@ -214,9 +211,9 @@ ${problem}
 CRITICAL RULES:
 - Language: ${language === 'ar' ? 'Arabic' : 'English'}
 - Detail level: ${detailMap[detailLevel] || 'step-by-step'}
-- Use PURE LaTeX for equations (NO \text{} or \mbox{} wrappers)
-- Example good equation: \int x^4 dx = \frac{x^5}{5}
-- Example bad equation: \text{integral of } x^4 \text{ is } \frac{x^5}{5}
+- Use PURE LaTeX for equations (NO \\text{} or \\mbox{} wrappers)
+- Example good equation: \\int x^4 dx = \\frac{x^5}{5}
+- Example bad equation: \\text{integral of } x^4 \\text{ is } \\frac{x^5}{5}
 - Show all mathematical steps clearly
 - Include the name of each rule/law used
 - Verify the final answer
@@ -239,11 +236,11 @@ function generateDemoSolution(problem: string, language: string) {
   const isAr = language === 'ar';
   return {
     steps: [
-      { stepNumber: 1, explanation: isAr ? 'نبدأ بتحليل المسألة' : 'Start analyzing', equation: '\int x^4 dx = \frac{x^5}{5}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
-      { stepNumber: 2, explanation: isAr ? 'نكمل الحل' : 'Continue solving', equation: '\int (-3x^2) dx = -x^3', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: false },
-      { stepNumber: 3, explanation: isAr ? 'النتيجة النهائية' : 'Final result', equation: '\int 5x dx = \frac{5x^2}{2}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
+      { stepNumber: 1, explanation: isAr ? 'نبدأ بتحليل المسألة' : 'Start analyzing', equation: '\\int x^4 dx = \\frac{x^5}{5}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
+      { stepNumber: 2, explanation: isAr ? 'نكمل الحل' : 'Continue solving', equation: '\\int (-3x^2) dx = -x^3', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: false },
+      { stepNumber: 3, explanation: isAr ? 'النتيجة النهائية' : 'Final result', equation: '\\int 5x dx = \\frac{5x^2}{2}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
     ],
-    finalAnswer: '\frac{x^5}{5} - x^3 + \frac{5x^2}{2} - 7x + C',
+    finalAnswer: '\\frac{x^5}{5} - x^3 + \\frac{5x^2}{2} - 7x + C',
     verification: isAr ? 'اشتق الإجابة للتحقق' : 'Differentiate the answer to verify',
   };
 }
