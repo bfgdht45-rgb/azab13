@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Key, Eye, EyeOff, Save, Check, AlertTriangle, Info, Server, Cpu } from 'lucide-react';
+import { Key, Eye, EyeOff, Save, Check, AlertTriangle, Info, Server, Cpu, Zap } from 'lucide-react';
 
 interface SettingsPanelProps {
   isOpen: boolean;
