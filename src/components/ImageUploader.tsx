@@ -1,5 +1,4 @@
-import { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useState, useRef } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { mathSolverAPI } from '../services/api';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '../utils/constants';
@@ -13,9 +12,9 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [ocrResult, setOcrResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
+  const handleFile = async (file: File) => {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
@@ -44,43 +43,40 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
     } finally {
       setIsProcessing(false);
     }
-  }, [onOCRComplete]);
+  };
 
-  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
-    onDrop,
-    accept: {
-      'image/jpeg': ['.jpeg', '.jpg'],
-      'image/png': ['.png'],
-      'image/webp': ['.webp'],
-    },
-    maxFiles: 1,
-    disabled: isProcessing,
-  });
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  };
 
   const clearImage = () => {
     setPreview(null);
     setOcrResult(null);
     setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
     <div className="w-full">
       {!preview ? (
         <div
-          {...getRootProps()}
-          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
-            isDragActive
-              ? 'border-primary-500 bg-primary-50'
-              : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
-          }`}
+          onClick={() => fileInputRef.current?.click()}
+          className="border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all border-gray-300 hover:border-primary-400 hover:bg-gray-50"
         >
-          <input {...getInputProps()} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleInputChange}
+            className="hidden"
+          />
           <Upload className="mx-auto mb-3 text-gray-400" size={48} />
           <p className="text-lg font-medium text-gray-700 mb-1">
-            {isDragActive ? 'أفلت الصورة هنا' : 'اسحب صورة المسألة هنا'}
+            انقر لاختيار ملف (JPG, PNG, WebP)
           </p>
           <p className="text-sm text-gray-500">
-            أو انقر لاختيار ملف (JPG, PNG, WebP)
+            أو اسحب صورة المسألة هنا
           </p>
         </div>
       ) : (
@@ -113,17 +109,6 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
               </code>
             </div>
           )}
-        </div>
-      )}
-
-      {fileRejections.length > 0 && (
-        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {fileRejections.map(({ file, errors }: { file: File; errors: { code: string; message: string }[] }) => (
-            <div key={file.name}>
-              <p className="font-medium">{file.name}: مرفوض</p>
-              {errors.map((e: { code: string; message: string }) => <p key={e.code} className="text-xs">{e.message}</p>)}
-            </div>
-          ))}
         </div>
       )}
 
