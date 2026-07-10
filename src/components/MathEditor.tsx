@@ -1,18 +1,18 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
+import 'mathlive';
+import type { MathfieldElement } from 'mathlive';
 import { SYMBOL_CATEGORIES } from '../utils/symbols';
 import { SymbolPalette } from './SymbolPalette';
 import { Keyboard, Eraser, Copy } from 'lucide-react';
 
-// Declare mathlive type
-declare const MathfieldElement: any;
-
 interface MathEditorProps {
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
 }
 
-export function MathEditor({ value, onChange }: MathEditorProps) {
-  const mathFieldRef = useRef<any>(null);
+export function MathEditor({ value, onChange, placeholder }: MathEditorProps) {
+  const mathFieldRef = useRef<MathfieldElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPalette, setShowPalette] = useState(false);
   const [activeCategory, setActiveCategory] = useState('basic');
@@ -20,38 +20,27 @@ export function MathEditor({ value, onChange }: MathEditorProps) {
 
   useEffect(() => {
     if (containerRef.current && !mathFieldRef.current) {
-      // Dynamically import mathlive
-      import('mathlive').then((mathlive) => {
-        const MF = mathlive.MathfieldElement || (window as any).MathfieldElement;
-        if (!MF) return;
-
-        const mf = new MF();
-        mf.value = value;
-        mf.setOptions({
-          virtualKeyboardMode: 'manual',
-          smartFence: true,
-          smartSuperscript: true,
-          removeExtraneousParentheses: true,
-          locale: 'ar',
-          readOnly: false,
-          style: {
-            fontSize: '1.2rem',
-            padding: '12px 16px',
-          },
-        });
-
-        mf.addEventListener('input', () => {
-          onChange(mf.value);
-        });
-
-        if (containerRef.current) {
-          containerRef.current.appendChild(mf);
-          mathFieldRef.current = mf;
-        }
-      }).catch(() => {
-        // mathlive not available, use textarea fallback
-        console.warn('mathlive not available');
+      const mf = new MathfieldElement();
+      mf.value = value;
+      mf.setOptions({
+        virtualKeyboardMode: 'manual',
+        smartFence: true,
+        smartSuperscript: true,
+        removeExtraneousParentheses: true,
+        locale: 'ar',
+        readOnly: false,
+        style: {
+          fontSize: '1.2rem',
+          padding: '12px 16px',
+        },
       });
+
+      mf.addEventListener('input', () => {
+        onChange(mf.value);
+      });
+
+      containerRef.current.appendChild(mf);
+      mathFieldRef.current = mf;
     }
 
     return () => {
