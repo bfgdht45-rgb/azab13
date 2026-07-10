@@ -116,12 +116,12 @@ function renderSymbolPreview(latex: string): string {
     '\\arctan': 'arctan', '\\sinh': 'sinh', '\\cosh': 'cosh', '\\tanh': 'tanh',
     '\\forall': '∀', '\\exists': '∃', '\\in': '∈', '\\notin': '∉',
     '\\subset': '⊂', '\\supset': '⊃', '\\cup': '∪', '\\cap': '∩',
-    '\\emptyset': '∅', '\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}': 'M',
-    '\\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}': '[M]',
-    '\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix}': '|M|',
+    '\\emptyset': '∅', '\\begin{pmatrix} a & b \\ c & d \\end{pmatrix}': 'M',
+    '\\begin{bmatrix} a & b \\ c & d \\end{bmatrix}': '[M]',
+    '\\begin{vmatrix} a & b \\ c & d \\end{vmatrix}': '|M|',
     '\\det': 'det', '\\tr': 'tr', '\\rank': 'rank', '\\dim': 'dim',
     '\\ker': 'ker', '\\operatorname{adj}': 'adj', '\\operatorname{cof}': 'cof',
-    '\\begin{pmatrix} 1 & 0 & 0 \\\\ 0 & 1 & 0 \\\\ 0 & 0 & 1 \\end{pmatrix}': 'I₃',
+    '\\begin{pmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \\end{pmatrix}': 'I₃',
     '\\lambda': 'λ', '\\alpha': 'α', '\\beta': 'β', '\\gamma': 'γ',
     '\\Gamma': 'Γ', '\\zeta': 'ζ', '\\eta': 'η', '\\theta': 'θ',
     '\\Theta': 'Θ', '\\iota': 'ι', '\\kappa': 'κ', '\\Lambda': 'Λ',
@@ -157,5 +157,5 @@ function renderSymbolPreview(latex: string): string {
     '\\underbrace{}_{}': '⏟', '\\overset{}{}': '↑', '\\underset{}{}': '↓',
     '\\boxed{}': '□', '\\cancel{}': '✕', '\\bcancel{}': '✕',
   };
-  return previews[latex] || latex.replace(/\\/g, '').replace(/{}/g, '').replace(/\begin{.*?}/g, '').replace(/\end{.*?}/g, '').substring(0, 3);
+  return previews[latex] || latex.replace(/\\/g, '').replace(/\{\}/g, '').replace(/\begin\{.*?\}/g, '').replace(/\end\{.*?\}/g, '').substring(0, 3);
 }
