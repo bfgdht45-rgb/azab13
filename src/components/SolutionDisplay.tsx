@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'katex/dist/katex.min.css';
-import { InlineMath, BlockMath } from 'react-katex';
+import { BlockMath } from 'react-katex';
 import type { MathSolution } from '../types';
 import { CheckCircle, AlertCircle, Lightbulb, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -32,7 +32,7 @@ export function SolutionDisplay({ solution }: SolutionDisplayProps) {
 
     // Clean up the equation for KaTeX
     const cleanEq = equation
-      .replace(/\\text\{([^}]+)\}/g, '$1')
+      .replace(/\text\{([^}]+)\}/g, '$1')
       .replace(/\\\{/g, '{')
       .replace(/\\\}/g, '}')
       .replace(/\\frac\{/g, '\frac{')
@@ -82,7 +82,7 @@ export function SolutionDisplay({ solution }: SolutionDisplayProps) {
       .replace(/\\end\{bmatrix\}/g, '\end{bmatrix}')
       .replace(/\\begin\{vmatrix\}/g, '\begin{vmatrix}')
       .replace(/\\end\{vmatrix\}/g, '\end{vmatrix}')
-      .replace(/\\\\/g, '\\')
+      .replace(/\\\\/g, '\')
       .trim();
 
     try {
