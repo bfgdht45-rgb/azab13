@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import 'mathlive';
-import type { MathfieldElement } from 'mathlive';
+import { MathfieldElement } from 'mathlive';
 import { SYMBOL_CATEGORIES } from '../utils/symbols';
 import { SymbolPalette } from './SymbolPalette';
 import { Keyboard, Eraser, Copy } from 'lucide-react';
