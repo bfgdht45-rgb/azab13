@@ -46,9 +46,13 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
     }
   }, [onOCRComplete]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,
-    accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.webp'] },
+    accept: {
+      'image/jpeg': ['.jpeg', '.jpg'],
+      'image/png': ['.png'],
+      'image/webp': ['.webp'],
+    },
     maxFiles: 1,
     disabled: isProcessing,
   });
@@ -109,6 +113,17 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
               </code>
             </div>
           )}
+        </div>
+      )}
+
+      {fileRejections.length > 0 && (
+        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {fileRejections.map(({ file, errors }) => (
+            <div key={file.name}>
+              <p className="font-medium">{file.name}: مرفوض</p>
+              {errors.map(e => <p key={e.code} className="text-xs">{e.message}</p>)}
+            </div>
+          ))}
         </div>
       )}
 
