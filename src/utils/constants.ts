@@ -1,6 +1,6 @@
 // Application Constants
 
-export const API_BASE_URL = '/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const SUBJECTS = [
   { id: 'general', name: 'عام', nameEn: 'General', icon: '🔢', color: 'bg-gray-500' },
@@ -36,9 +36,9 @@ export const MATH_SOLVER_PROMPT = `
 🔹 قواعد مهمة جداً:
 1. اكتب الحل باللغة العربية الفصحى الواضحة
 2. اشرح كل خطوة بشكل مفصل ومفهوم
-3. اكتب المعادلات الرياضية بصيغة LaTeX PURE (بدون \text أو \mbox)
-4. استخدم فقط رموز LaTeX الرياضية مثل: \frac, \int, \sum, \sqrt, \pi, \infty
-5. لا تستخدم \text{} أو \mbox{} داخل المعادلات
+3. اكتب المعادلات الرياضية بصيغة LaTeX PURE (بدون \\text أو \\mbox)
+4. استخدم فقط رموز LaTeX الرياضية مثل: \\frac, \\int, \\sum, \\sqrt, \\pi, \\infty
+5. لا تستخدم \\text{} أو \\mbox{} داخل المعادلات
 6. اذكر القوانين والقواعد المستخدمة في كل خطوة
 7. تحقق من صحة الحل النهائي
 8. اكتب الإجابة النهائية بوضوح في النهاية
@@ -69,9 +69,9 @@ You are an expert mathematics teacher. Solve the following problem with complete
 🔹 Important Rules:
 1. Write the solution in clear English
 2. Explain each step in detail
-3. Write equations in PURE LaTeX format (NO \text or \mbox)
-4. Use only mathematical LaTeX symbols: \frac, \int, \sum, \sqrt, \pi, \infty
-5. Do NOT use \text{} or \mbox{} inside equations
+3. Write equations in PURE LaTeX format (NO \\text or \\mbox)
+4. Use only mathematical LaTeX symbols: \\frac, \\int, \\sum, \\sqrt, \\pi, \\infty
+5. Do NOT use \\text{} or \\mbox{} inside equations
 6. State the rules and laws used in each step
 7. Verify the final answer
 
