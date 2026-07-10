@@ -59,7 +59,8 @@ export function MathEditor({ value, onChange, placeholder }: MathEditorProps) {
 
   const insertSymbol = useCallback((latex: string) => {
     if (mathFieldRef.current) {
-      mathFieldRef.current.executeCommand(['insert', latex.replace(/\\/g, '\')]);
+      // ✅ الإصلاح: استبدل \\ بـ \ عشان mathlive يفهمها
+      mathFieldRef.current.executeCommand(['insert', latex.replace(/\\\\/g, '\\')]);
       mathFieldRef.current.focus();
     }
   }, []);
