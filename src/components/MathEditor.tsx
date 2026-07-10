@@ -1,6 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import 'mathlive';
-declare const MathfieldElement: typeof import('mathlive').MathfieldElement;
 import { SYMBOL_CATEGORIES } from '../utils/symbols';
 import { SymbolPalette } from './SymbolPalette';
 import { Keyboard, Eraser, Copy } from 'lucide-react';
@@ -12,7 +11,7 @@ interface MathEditorProps {
 }
 
 export function MathEditor({ value, onChange, placeholder }: MathEditorProps) {
-  const mathFieldRef = useRef<MathfieldElement | null>(null);
+  const mathFieldRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPalette, setShowPalette] = useState(false);
   const [activeCategory, setActiveCategory] = useState('basic');
@@ -20,6 +19,7 @@ export function MathEditor({ value, onChange, placeholder }: MathEditorProps) {
 
   useEffect(() => {
     if (containerRef.current && !mathFieldRef.current) {
+      const MathfieldElement = (window as any).MathfieldElement;
       const mf = new MathfieldElement();
       mf.value = value;
       mf.setOptions({

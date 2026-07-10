@@ -1,14 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
-import { MathEditor } from './components/MathEditor';
-import { ImageUploader } from './components/ImageUploader';
-import { SolutionDisplay } from './components/SolutionDisplay';
-import { SubjectSelector } from './components/SubjectSelector';
-import { DetailLevelSelector } from './components/DetailLevelSelector';
-import { SettingsPanel } from './components/SettingsPanel';
-import { useMathSolver } from './hooks/useMathSolver';
-import { mathSolverAPI } from './services/api';
-import type { MathSubject, InputMode } from './types';
-import { SUBJECTS, DETAIL_LEVELS } from './utils/constants';
+import { MathEditor } from './MathEditor';
+import { ImageUploader } from './ImageUploader';
+import { SolutionDisplay } from './SolutionDisplay';
+import { SubjectSelector } from './SubjectSelector';
+import { DetailLevelSelector } from './DetailLevelSelector';
+import { SettingsPanel } from './SettingsPanel';
+import { useMathSolver } from '../hooks/useMathSolver';
+import { mathSolverAPI } from '../services/api';
+import type { MathSubject, InputMode } from '../types';
+import { SUBJECTS, DETAIL_LEVELS } from '../utils/constants';
 import { Calculator, Type, Image as ImageIcon, Settings, Sparkles, BookOpen, AlertTriangle } from 'lucide-react';
 
 function MainPage() {
@@ -212,7 +212,7 @@ function MainPage() {
                 الفروع المدعومة
               </h3>
               <div className="flex flex-wrap gap-2">
-                {SUBJECTS.map(s => (
+                {SUBJECTS.map((s: typeof SUBJECTS[0]) => (
                   <span key={s.id} className="px-2 py-1 bg-white rounded-lg text-xs text-blue-700 border border-blue-100">
                     {s.name}
                   </span>
