@@ -82,7 +82,8 @@ export function SolutionDisplay({ solution }: SolutionDisplayProps) {
       .replace(/\\end\{bmatrix\}/g, '\end{bmatrix}')
       .replace(/\\begin\{vmatrix\}/g, '\begin{vmatrix}')
       .replace(/\\end\{vmatrix\}/g, '\end{vmatrix}')
-      .replace(/\\\\/g, '\')
+      .replace(/\\/g, '\\')
+
       .trim();
 
     try {
