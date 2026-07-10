@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import 'mathlive';
-import type { MathfieldElement } from 'mathlive';
+import { MathfieldElement } from 'mathlive';
 import { SYMBOL_CATEGORIES } from '../utils/symbols';
 import { SymbolPalette } from './SymbolPalette';
 import { Keyboard, Eraser, Copy } from 'lucide-react';
@@ -8,10 +8,9 @@ import { Keyboard, Eraser, Copy } from 'lucide-react';
 interface MathEditorProps {
   value: string;
   onChange: (value: string) => void;
-  placeholder?: string;
 }
 
-export function MathEditor({ value, onChange, placeholder }: MathEditorProps) {
+export function MathEditor({ value, onChange }: MathEditorProps) {
   const mathFieldRef = useRef<MathfieldElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPalette, setShowPalette] = useState(false);
@@ -59,8 +58,7 @@ export function MathEditor({ value, onChange, placeholder }: MathEditorProps) {
 
   const insertSymbol = useCallback((latex: string) => {
     if (mathFieldRef.current) {
-      // ✅ الإصلاح: استبدل \\ بـ \ عشان mathlive يفهمها
-      mathFieldRef.current.executeCommand(['insert', latex.replace(/\\\\/g, '\\')]);
+      mathFieldRef.current.executeCommand(['insert', latex]);
       mathFieldRef.current.focus();
     }
   }, []);
