@@ -62,7 +62,7 @@ export const mathSolverAPI = {
         solution: {
           id: Date.now().toString(),
           problemId: 'temp',
-          steps: (result.steps || []).map((step, i) => ({
+          steps: (result.steps || []).map((step: any, i: number) => ({
             stepNumber: step.stepNumber || i + 1,
             explanation: step.explanation || step.description || 'خطوة الحل',
             equation: step.equation || '',
@@ -92,7 +92,7 @@ export const mathSolverAPI = {
       latex: 'x^2 + 3x - 5 = 0',
       confidence: 0.95,
       rawText: 'x^2 + 3x - 5 = 0',
-      note: 'OCR demo mode. Type the equation manually for now.',
+      // note: 'OCR demo mode. Type the equation manually for now.',
     };
   },
 
