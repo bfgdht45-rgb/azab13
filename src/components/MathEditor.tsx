@@ -1,9 +1,10 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import 'mathlive';
-import { MathfieldElement } from 'mathlive';
 import { SYMBOL_CATEGORIES } from '../utils/symbols';
 import { SymbolPalette } from './SymbolPalette';
 import { Keyboard, Eraser, Copy } from 'lucide-react';
+
+// Declare mathlive type
+declare const MathfieldElement: any;
 
 interface MathEditorProps {
   value: string;
@@ -11,7 +12,7 @@ interface MathEditorProps {
 }
 
 export function MathEditor({ value, onChange }: MathEditorProps) {
-  const mathFieldRef = useRef<MathfieldElement | null>(null);
+  const mathFieldRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPalette, setShowPalette] = useState(false);
   const [activeCategory, setActiveCategory] = useState('basic');
@@ -19,27 +20,38 @@ export function MathEditor({ value, onChange }: MathEditorProps) {
 
   useEffect(() => {
     if (containerRef.current && !mathFieldRef.current) {
-      const mf = new MathfieldElement();
-      mf.value = value;
-      mf.setOptions({
-        virtualKeyboardMode: 'manual',
-        smartFence: true,
-        smartSuperscript: true,
-        removeExtraneousParentheses: true,
-        locale: 'ar',
-        readOnly: false,
-        style: {
-          fontSize: '1.2rem',
-          padding: '12px 16px',
-        },
-      });
+      // Dynamically import mathlive
+      import('mathlive').then((mathlive) => {
+        const MF = mathlive.MathfieldElement || (window as any).MathfieldElement;
+        if (!MF) return;
 
-      mf.addEventListener('input', () => {
-        onChange(mf.value);
-      });
+        const mf = new MF();
+        mf.value = value;
+        mf.setOptions({
+          virtualKeyboardMode: 'manual',
+          smartFence: true,
+          smartSuperscript: true,
+          removeExtraneousParentheses: true,
+          locale: 'ar',
+          readOnly: false,
+          style: {
+            fontSize: '1.2rem',
+            padding: '12px 16px',
+          },
+        });
 
-      containerRef.current.appendChild(mf);
-      mathFieldRef.current = mf;
+        mf.addEventListener('input', () => {
+          onChange(mf.value);
+        });
+
+        if (containerRef.current) {
+          containerRef.current.appendChild(mf);
+          mathFieldRef.current = mf;
+        }
+      }).catch(() => {
+        // mathlive not available, use textarea fallback
+        console.warn('mathlive not available');
+      });
     }
 
     return () => {
