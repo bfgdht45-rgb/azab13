@@ -118,10 +118,10 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
 
       {fileRejections.length > 0 && (
         <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {fileRejections.map(({ file, errors }) => (
+          {fileRejections.map(({ file, errors }: { file: File; errors: { code: string; message: string }[] }) => (
             <div key={file.name}>
               <p className="font-medium">{file.name}: مرفوض</p>
-              {errors.map(e => <p key={e.code} className="text-xs">{e.message}</p>)}
+              {errors.map((e: { code: string; message: string }) => <p key={e.code} className="text-xs">{e.message}</p>)}
             </div>
           ))}
         </div>
