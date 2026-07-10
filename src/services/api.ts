@@ -42,7 +42,7 @@ export const mathSolverAPI = {
 
     try {
       const prompt = buildPrompt(request.problem, request.subject, request.language, request.detailLevel);
-      let result;
+      let result: unknown;
 
       if (cfg.provider === 'baseten' || cfg.baseUrl.includes('baseten')) {
         result = await callBasetenDirect(cfg.apiKey, cfg.model, cfg.baseUrl, prompt);
@@ -57,20 +57,23 @@ export const mathSolverAPI = {
         result = generateDemoSolution(request.problem, request.language);
       }
 
+      const resultObj = result as Record<string, unknown>;
+      const steps = (resultObj.steps || []) as Array<Record<string, unknown>>;
+
       return {
         success: true,
         solution: {
           id: Date.now().toString(),
           problemId: 'temp',
-          steps: (result.steps || []).map((step, i) => ({
-            stepNumber: step.stepNumber || i + 1,
-            explanation: step.explanation || step.description || 'خطوة الحل',
-            equation: step.equation || '',
-            rule: step.rule || step.law || '',
-            isImportant: step.isImportant || false,
+          steps: steps.map((step: Record<string, unknown>, i: number) => ({
+            stepNumber: (step.stepNumber as number) || i + 1,
+            explanation: (step.explanation as string) || (step.description as string) || 'خطوة الحل',
+            equation: (step.equation as string) || '',
+            rule: (step.rule as string) || (step.law as string) || '',
+            isImportant: (step.isImportant as boolean) || false,
           })),
-          finalAnswer: result.finalAnswer || result.answer || 'لا يوجد إجابة',
-          verification: result.verification || result.check || '',
+          finalAnswer: (resultObj.finalAnswer as string) || (resultObj.answer as string) || 'لا يوجد إجابة',
+          verification: (resultObj.verification as string) || (resultObj.check as string) || '',
           language: request.language || 'ar',
           solvedAt: new Date(),
         },
@@ -92,7 +95,7 @@ export const mathSolverAPI = {
       latex: 'x^2 + 3x - 5 = 0',
       confidence: 0.95,
       rawText: 'x^2 + 3x - 5 = 0',
-      note: 'OCR demo mode. Type the equation manually for now.',
+      error: undefined,
     };
   },
 
