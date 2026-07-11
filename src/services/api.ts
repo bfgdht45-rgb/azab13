@@ -97,7 +97,6 @@ export const mathSolverAPI = {
         confidence: 0,
         rawText: '',
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح API أولاً.',
-        // ❌ محيّت processingTime عشان OCRResult مش بيدعمها
       };
     }
 
@@ -140,7 +139,6 @@ export const mathSolverAPI = {
         latex: cleanedText,
         confidence: confidence,
         rawText: extractedText,
-        // ❌ محيّت processingTime عشان OCRResult مش بيدعمها
       };
     } catch (error: unknown) {
       const err = error as { message?: string };
@@ -172,12 +170,13 @@ export const mathSolverAPI = {
       };
     }
 
-    // ✅ الخطوة 2: حل المسألة المستخرجة - باستخدام as any عشان نتجاوز TypeScript
+    // ✅ الخطوة 2: حل المسألة المستخرجة
     const solveRequest: SolverRequest = {
       problem: ocrResult.latex,
-      subject: subject as any,        // ✅ تصليح: string → MathSubject
-      language: language as any,      // ✅ تصليح: string → "ar" | "en"
-      detailLevel: detailLevel as any, // ✅ تصليح: string → "brief" | "detailed" | "step-by-step"
+      subject: subject as any,
+      language: language as any,
+      detailLevel: detailLevel as any,
+      includeGraph: false,
     };
 
     const solveResponse = await mathSolverAPI.solve(solveRequest);
@@ -241,13 +240,13 @@ async function callGeminiVision(apiKey: string, model: string, base64Image: stri
                 text: `You are an expert OCR system for mathematical equations. 
 Look at this image and extract ALL mathematical text.
 Return ONLY the mathematical expression in PURE LaTeX format.
-Do NOT use \\text{} or \\mbox{}.
+Do NOT use \text{} or \mbox{}.
 Do NOT add any explanation, just the raw LaTeX.
 Examples of good output:
-- \\int_{0}^{\\pi} \\sin(x) dx
+- \int_{0}^{\pi} \sin(x) dx
 - x^2 + 3x - 5 = 0
-- \\frac{d}{dx}(x^3 + 2x) = 3x^2 + 2
-- \\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}`
+- \frac{d}{dx}(x^3 + 2x) = 3x^2 + 2
+- \sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}`
               },
               {
                 inlineData: {
@@ -290,7 +289,7 @@ async function callOpenAIVision(apiKey: string, model: string, base64Image: stri
       messages: [
         {
           role: 'system',
-          content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}. No explanations.'
+          content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}. No explanations.'
         },
         {
           role: 'user',
@@ -335,7 +334,7 @@ async function callBasetenVision(apiKey: string, model: string, baseUrl: string,
       messages: [
         {
           role: 'system',
-          content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.'
+          content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.'
         },
         {
           role: 'user',
@@ -380,7 +379,7 @@ async function callBasetenDirect(apiKey: string, model: string, baseUrl: string,
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
@@ -417,7 +416,7 @@ async function callOpenAIDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       response_format: { type: 'json_object' },
@@ -439,7 +438,7 @@ async function callGeminiDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       contents: [{ 
         role: 'user', 
-        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' }] 
+        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' }] 
       }],
       generationConfig: { temperature: 0.2, maxOutputTokens: 4000 },
     }),
@@ -480,9 +479,9 @@ ${problem}
 CRITICAL RULES:
 - Language: ${language === 'ar' ? 'Arabic' : 'English'}
 - Detail level: ${detailMap[detailLevel] || 'step-by-step'}
-- Use PURE LaTeX for equations (NO \\text{} or \\mbox{} wrappers)
-- Example good equation: \\int x^4 dx = \\frac{x^5}{5}
-- Example bad equation: \\text{integral of } x^4 \\text{ is } \\frac{x^5}{5}
+- Use PURE LaTeX for equations (NO \text{} or \mbox{} wrappers)
+- Example good equation: \int x^4 dx = \frac{x^5}{5}
+- Example bad equation: \text{integral of } x^4 \text{ is } \frac{x^5}{5}
 - Show all mathematical steps clearly
 - Include the name of each rule/law used
 - Verify the final answer
@@ -492,11 +491,11 @@ Respond in this JSON format:
   "steps": [{
     "stepNumber": 1,
     "explanation": "detailed explanation in ${language === 'ar' ? 'Arabic' : 'English'}",
-    "equation": "PURE LaTeX equation like: \\int x^4 dx = \\frac{x^5}{5}",
+    "equation": "PURE LaTeX equation like: \int x^4 dx = \frac{x^5}{5}",
     "rule": "name of rule used",
     "isImportant": true/false
   }],
-  "finalAnswer": "final answer in PURE LaTeX like: \\frac{x^5}{5} - x^3 + \\frac{5x^2}{2} - 7x + C",
+  "finalAnswer": "final answer in PURE LaTeX like: \frac{x^5}{5} - x^3 + \frac{5x^2}{2} - 7x + C",
   "verification": "how to verify this answer"
 }`;
 }
@@ -505,11 +504,11 @@ function generateDemoSolution(problem: string, language: string) {
   const isAr = language === 'ar';
   return {
     steps: [
-      { stepNumber: 1, explanation: isAr ? 'نبدأ بتحليل المسألة' : 'Start analyzing', equation: '\\int x^4 dx = \\frac{x^5}{5}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
-      { stepNumber: 2, explanation: isAr ? 'نكمل الحل' : 'Continue solving', equation: '\\int (-3x^2) dx = -x^3', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: false },
-      { stepNumber: 3, explanation: isAr ? 'النتيجة النهائية' : 'Final result', equation: '\\int 5x dx = \\frac{5x^2}{2}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
+      { stepNumber: 1, explanation: isAr ? 'نبدأ بتحليل المسألة' : 'Start analyzing', equation: '\int x^4 dx = \frac{x^5}{5}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
+      { stepNumber: 2, explanation: isAr ? 'نكمل الحل' : 'Continue solving', equation: '\int (-3x^2) dx = -x^3', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: false },
+      { stepNumber: 3, explanation: isAr ? 'النتيجة النهائية' : 'Final result', equation: '\int 5x dx = \frac{5x^2}{2}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
     ],
-    finalAnswer: '\\frac{x^5}{5} - x^3 + \\frac{5x^2}{2} - 7x + C',
+    finalAnswer: '\frac{x^5}{5} - x^3 + \frac{5x^2}{2} - 7x + C',
     verification: isAr ? 'اشتق الإجابة للتحقق' : 'Differentiate the answer to verify',
   };
 }
