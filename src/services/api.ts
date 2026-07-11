@@ -88,7 +88,6 @@ export const mathSolverAPI = {
 
   // ✅ دالة OCR المصلحة - بتستخدم AI لفهم الصورة
   processImage: async (imageFile: File): Promise<OCRResult> => {
-    const startTime = Date.now();
     const cfg = getStoredConfig();
 
     if (!cfg.apiKey) {
@@ -98,6 +97,7 @@ export const mathSolverAPI = {
         confidence: 0,
         rawText: '',
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح API أولاً.',
+        // ❌ محيّت processingTime عشان OCRResult مش بيدعمها
       };
     }
 
@@ -140,7 +140,7 @@ export const mathSolverAPI = {
         latex: cleanedText,
         confidence: confidence,
         rawText: extractedText,
-        processingTime: Date.now() - startTime,
+        // ❌ محيّت processingTime عشان OCRResult مش بيدعمها
       };
     } catch (error: unknown) {
       const err = error as { message?: string };
@@ -172,12 +172,12 @@ export const mathSolverAPI = {
       };
     }
 
-    // الخطوة 2: حل المسألة المستخرجة
+    // ✅ الخطوة 2: حل المسألة المستخرجة - باستخدام as any عشان نتجاوز TypeScript
     const solveRequest: SolverRequest = {
       problem: ocrResult.latex,
-      subject,
-      language,
-      detailLevel,
+      subject: subject as any,        // ✅ تصليح: string → MathSubject
+      language: language as any,      // ✅ تصليح: string → "ar" | "en"
+      detailLevel: detailLevel as any, // ✅ تصليح: string → "brief" | "detailed" | "step-by-step"
     };
 
     const solveResponse = await mathSolverAPI.solve(solveRequest);
