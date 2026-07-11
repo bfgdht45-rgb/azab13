@@ -51,26 +51,27 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
     if (file) handleFile(file);
   };
 
-  // 🔴 دول المهمين جداً عشان المتصفح ما يفتحش الصورة في tab جديد
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
 
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleFile(files[0]);
+    }
   }, []);
 
   const clearImage = () => {
@@ -87,9 +88,10 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
         <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={handleDragOver}
+          onDragEnter={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all select-none ${
             isDragOver
               ? 'border-primary-500 bg-primary-50'
               : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
