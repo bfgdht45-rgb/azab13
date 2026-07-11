@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { MathEditor } from './MathEditor';
 import { ImageUploader } from './ImageUploader';
 import { SolutionDisplay } from './SolutionDisplay';
@@ -11,7 +11,7 @@ import type { MathSubject, InputMode } from '../types';
 import { SUBJECTS, DETAIL_LEVELS } from '../utils/constants';
 import { Calculator, Type, Image as ImageIcon, Settings, Sparkles, BookOpen, AlertTriangle } from 'lucide-react';
 
-function MainPage() {
+const MainPage = React.memo(function MainPage() {
   const [inputMode, setInputMode] = useState<InputMode>('editor');
   const [latexInput, setLatexInput] = useState('');
   const [textInput, setTextInput] = useState('');
@@ -24,12 +24,15 @@ function MainPage() {
   useEffect(() => {
     const check = () => {
       const info = mathSolverAPI.getProviderInfo();
-      setApiStatus({ checked: true, hasKeys: info.hasKeys, model: info.model, provider: info.provider });
+      setApiStatus(prev => {
+        if (prev.hasKeys === info.hasKeys && prev.model === info.model) return prev;
+        return { checked: true, hasKeys: info.hasKeys, model: info.model, provider: info.provider };
+      });
     };
     check();
-    const interval = setInterval(check, 2000);
+    const interval = setInterval(check, 5000);
     return () => clearInterval(interval);
-  }, [showSettings]);
+  }, []);
 
   const handleSolve = useCallback(async () => {
     const problem = inputMode === 'editor' ? latexInput : textInput;
@@ -44,8 +47,8 @@ function MainPage() {
   }, [inputMode, latexInput, textInput, selectedSubject, detailLevel, solve]);
 
   const handleOCRComplete = useCallback((latex: string) => {
-  setLatexInput(latex);
-}, []);
+    setLatexInput(latex);
+  }, []);
 
   const inputModes: { id: InputMode; label: string; icon: typeof Calculator }[] = [
     { id: 'editor', label: 'محرر المعادلات', icon: Calculator },
@@ -245,7 +248,7 @@ function MainPage() {
       </footer>
     </div>
   );
-}
+});
 
 export default function App() {
   return <MainPage />;
