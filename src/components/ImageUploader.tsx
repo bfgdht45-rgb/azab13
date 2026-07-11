@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { mathSolverAPI } from '../services/api';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '../utils/constants';
@@ -12,6 +12,7 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [ocrResult, setOcrResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
@@ -50,10 +51,33 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
     if (file) handleFile(file);
   };
 
+  // 🔴 دول المهمين جداً عشان المتصفح ما يفتحش الصورة في tab جديد
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  }, []);
+
   const clearImage = () => {
     setPreview(null);
     setOcrResult(null);
     setError(null);
+    setIsDragOver(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -62,7 +86,14 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
       {!preview ? (
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all border-gray-300 hover:border-primary-400 hover:bg-gray-50"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+            isDragOver
+              ? 'border-primary-500 bg-primary-50'
+              : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
+          }`}
         >
           <input
             ref={fileInputRef}
@@ -73,10 +104,10 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
           />
           <Upload className="mx-auto mb-3 text-gray-400" size={48} />
           <p className="text-lg font-medium text-gray-700 mb-1">
-            انقر لاختيار ملف (JPG, PNG, WebP)
+            {isDragOver ? 'أفلت الصورة هنا' : 'انقر لاختيار ملف أو اسحب صورة هنا'}
           </p>
           <p className="text-sm text-gray-500">
-            أو اسحب صورة المسألة هنا
+            JPG, PNG, WebP (الحد الأقصى 10 ميجابايت)
           </p>
         </div>
       ) : (
