@@ -68,9 +68,23 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
     e.stopPropagation();
     setIsDragOver(false);
 
+    // Files dragged from desktop
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       handleFile(files[0]);
+      return;
+    }
+
+    // URLs dragged from browser
+    const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (url && url.match(/\.(jpg|jpeg|png|webp)/i)) {
+      fetch(url)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], 'image.jpg', { type: blob.type });
+          handleFile(file);
+        })
+        .catch(() => setError('فشل في تحميل الصورة من الرابط'));
     }
   }, []);
 
