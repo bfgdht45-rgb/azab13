@@ -44,9 +44,8 @@ function MainPage() {
   }, [inputMode, latexInput, textInput, selectedSubject, detailLevel, solve]);
 
   const handleOCRComplete = useCallback((latex: string) => {
-    setLatexInput(latex);
-    setInputMode('editor');
-  }, []);
+  setLatexInput(latex);
+}, []);
 
   const inputModes: { id: InputMode; label: string; icon: typeof Calculator }[] = [
     { id: 'editor', label: 'محرر المعادلات', icon: Calculator },
