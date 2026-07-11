@@ -1,14 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
-import { MathEditor } from './MathEditor';
-import { ImageUploader } from './ImageUploader';
-import { SolutionDisplay } from './SolutionDisplay';
-import { SubjectSelector } from './SubjectSelector';
-import { DetailLevelSelector } from './DetailLevelSelector';
-import { SettingsPanel } from './SettingsPanel';
-import { useMathSolver } from '../hooks/useMathSolver';
-import { mathSolverAPI } from '../services/api';
-import type { MathSubject, InputMode } from '../types';
-import { SUBJECTS, DETAIL_LEVELS } from '../utils/constants';
+import { MathEditor } from './components/MathEditor';
+import { ImageUploader } from './components/ImageUploader';
+import { SolutionDisplay } from './components/SolutionDisplay';
+import { SubjectSelector } from './components/SubjectSelector';
+import { DetailLevelSelector } from './components/DetailLevelSelector';
+import { SettingsPanel } from './components/SettingsPanel';
+import { useMathSolver } from './hooks/useMathSolver';
+import { mathSolverAPI } from './services/api';
+import type { MathSubject, InputMode } from './types';
+import { SUBJECTS, DETAIL_LEVELS } from './utils/constants';
 import { Calculator, Type, Image as ImageIcon, Settings, Sparkles, BookOpen, AlertTriangle } from 'lucide-react';
 
 function MainPage() {
@@ -43,10 +43,9 @@ function MainPage() {
     });
   }, [inputMode, latexInput, textInput, selectedSubject, detailLevel, solve]);
 
-  // ✅ تصليح: تحويل الوضع لـ editor بعد OCR
   const handleOCRComplete = useCallback((latex: string) => {
     setLatexInput(latex);
-    setInputMode('editor'); // ← ده السطر المهم!
+    setInputMode('editor');
   }, []);
 
   const inputModes: { id: InputMode; label: string; icon: typeof Calculator }[] = [
