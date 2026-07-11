@@ -14,7 +14,7 @@
     "react-router-dom": "^7.0.0",
     "katex": "^0.16.21",
     "react-katex": "^3.0.0",
-    "react-dropzone": "^14.3.5",
+    
     "lucide-react": "^0.469.0",
     "framer-motion": "^11.15.0",
     "clsx": "^2.1.1",
