@@ -30,67 +30,101 @@ export function SolutionDisplay({ solution }: SolutionDisplayProps) {
   const renderEquation = (equation: string) => {
     if (!equation || equation.trim() === '') return null;
 
-    // Clean up the equation for KaTeX
     const cleanEq = equation
       .replace(/\\text\{([^}]+)\}/g, '$1')
       .replace(/\\\{/g, '{')
       .replace(/\\\}/g, '}')
-      .replace(/\\frac\{/g, '\\frac{')
-      .replace(/\\int/g, '\\int')
-      .replace(/\\sum/g, '\\sum')
-      .replace(/\\sqrt/g, '\\sqrt')
-      .replace(/\\pi/g, '\\pi')
-      .replace(/\\infty/g, '\\infty')
-      .replace(/\\to/g, '\\to')
-      .replace(/\\cdot/g, '\\cdot')
-      .replace(/\\pm/g, '\\pm')
-      .replace(/\\neq/g, '\\neq')
-      .replace(/\\leq/g, '\\leq')
-      .replace(/\\geq/g, '\\geq')
-      .replace(/\\alpha/g, '\\alpha')
-      .replace(/\\beta/g, '\\beta')
-      .replace(/\\gamma/g, '\\gamma')
-      .replace(/\\delta/g, '\\delta')
-      .replace(/\\theta/g, '\\theta')
-      .replace(/\\lambda/g, '\\lambda')
-      .replace(/\\mu/g, '\\mu')
-      .replace(/\\sigma/g, '\\sigma')
-      .replace(/\\omega/g, '\\omega')
-      .replace(/\\Delta/g, '\\Delta')
-      .replace(/\\Sigma/g, '\\Sigma')
-      .replace(/\\Omega/g, '\\Omega')
-      .replace(/\\vec\{/g, '\\vec{')
-      .replace(/\\hat\{/g, '\\hat{')
-      .replace(/\\bar\{/g, '\\bar{')
-      .replace(/\\dot\{/g, '\\dot{')
-      .replace(/\\ddot\{/g, '\\ddot{')
-      .replace(/\\nabla/g, '\\nabla')
-      .replace(/\\partial/g, '\\partial')
-      .replace(/\\times/g, '\\times')
-      .replace(/\\div/g, '\\div')
-      .replace(/\\sin/g, '\\sin')
-      .replace(/\\cos/g, '\\cos')
-      .replace(/\\tan/g, '\\tan')
-      .replace(/\\log/g, '\\log')
-      .replace(/\\ln/g, '\\ln')
-      .replace(/\\exp/g, '\\exp')
-      .replace(/\\lim/g, '\\lim')
-      .replace(/\\det/g, '\\det')
-      .replace(/\\begin\{pmatrix\}/g, '\\begin{pmatrix}')
-      .replace(/\\end\{pmatrix\}/g, '\\end{pmatrix}')
-      .replace(/\\begin\{bmatrix\}/g, '\\begin{bmatrix}')
-      .replace(/\\end\{bmatrix\}/g, '\\end{bmatrix}')
-      .replace(/\\begin\{vmatrix\}/g, '\\begin{vmatrix}')
-      .replace(/\\end\{vmatrix\}/g, '\\end{vmatrix}')
-      .replace(/\\\\/g, '\\')
       .trim();
 
     try {
       return <BlockMath math={cleanEq} />;
     } catch {
-      // Fallback: display as plain text if KaTeX fails
       return <div className="text-lg font-mono text-gray-700 py-2">{equation}</div>;
     }
+  };
+
+  // ✅ دالة جديدة: تحويل نص فيه LaTeX لـ React elements
+  const renderMixedText = (text: string) => {
+    if (!text) return null;
+
+    // نمط: $$...$$ (display math)
+    // نمط: $...$ (inline math)
+    // نمط: \(...\) (inline math)
+    // نمط: \[...\] (display math)
+    const parts: React.ReactNode[] = [];
+    let remaining = text;
+
+    // Regex للمعادلات
+    const patterns = [
+      { regex: /\$\$([\s\S]*?)\$\$/g, type: 'block' as const },
+      { regex: /\$([^\$]+?)\$/g, type: 'inline' as const },
+      { regex: /\\\[([\s\S]*?)\\\]/g, type: 'block' as const },
+      { regex: /\\\(([\s\S]*?)\\\)/g, type: 'inline' as const },
+    ];
+
+    let hasMatch = false;
+    let key = 0;
+
+    while (remaining.length > 0) {
+      let earliestMatch: { index: number; end: number; text: string; type: 'inline' | 'block' } | null = null;
+
+      for (const pattern of patterns) {
+        pattern.regex.lastIndex = 0;
+        const match = pattern.regex.exec(remaining);
+        if (match && (earliestMatch === null || match.index < earliestMatch.index)) {
+          earliestMatch = {
+            index: match.index,
+            end: match.index + match[0].length,
+            text: match[1].trim(),
+            type: pattern.type,
+          };
+        }
+      }
+
+      if (earliestMatch) {
+        // النص قبل المعادلة
+        if (earliestMatch.index > 0) {
+          const beforeText = remaining.substring(0, earliestMatch.index).trim();
+          if (beforeText) {
+            parts.push(<span key={`text-${key++}`}>{beforeText}</span>);
+          }
+        }
+
+        // المعادلة
+        const cleanLatex = earliestMatch.text
+          .replace(/\\text\{([^}]+)\}/g, '$1')
+          .trim();
+
+        try {
+          if (earliestMatch.type === 'block') {
+            parts.push(
+              <div key={`block-${key++}`} className="my-3 bg-white rounded-lg p-3" dir="ltr">
+                <BlockMath math={cleanLatex} />
+              </div>
+            );
+          } else {
+            parts.push(
+              <span key={`inline-${key++}`} className="mx-1" dir="ltr">
+                <InlineMath math={cleanLatex} />
+              </span>
+            );
+          }
+        } catch {
+          parts.push(<code key={`err-${key++}`} className="text-red-500">{earliestMatch.text}</code>);
+        }
+
+        remaining = remaining.substring(earliestMatch.end);
+        hasMatch = true;
+      } else {
+        // مفيش معادلات تانية
+        if (remaining.trim()) {
+          parts.push(<span key={`text-${key++}`}>{remaining}</span>);
+        }
+        break;
+      }
+    }
+
+    return <>{parts}</>;
   };
 
   return (
@@ -152,10 +186,10 @@ export function SolutionDisplay({ solution }: SolutionDisplayProps) {
                   exit={{ height: 0, opacity: 0 }}
                   className="mt-4 pr-11 space-y-3 overflow-hidden"
                 >
-                  {/* Explanation */}
-                  <p className="text-gray-700 leading-relaxed text-lg">
-                    {step.explanation}
-                  </p>
+                  {/* Explanation - نستخدم renderMixedText لو فيه LaTeX */}
+                  <div className="text-gray-700 leading-relaxed text-lg">
+                    {renderMixedText(step.explanation)}
+                  </div>
 
                   {/* Equation with KaTeX */}
                   {step.equation && (
@@ -193,16 +227,16 @@ export function SolutionDisplay({ solution }: SolutionDisplayProps) {
         </div>
       </motion.div>
 
-      {/* Verification */}
+      {/* Verification - ✅ المصلح */}
       {solution.verification && (
         <div className="math-card bg-amber-50 border-amber-200">
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle className="text-amber-600" size={20} />
             <h4 className="font-semibold text-amber-800">التحقق من صحة الحل</h4>
           </div>
-          <p className="text-amber-700 leading-relaxed">
-            {solution.verification}
-          </p>
+          <div className="text-amber-700 leading-relaxed">
+            {renderMixedText(solution.verification)}
+          </div>
         </div>
       )}
     </div>
