@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { MathEditor } from './components/MathEditor';
 import { ImageUploader } from './components/ImageUploader';
 import { SolutionDisplay } from './components/SolutionDisplay';
@@ -11,7 +11,7 @@ import type { MathSubject, InputMode } from './types';
 import { SUBJECTS, DETAIL_LEVELS } from './utils/constants';
 import { Calculator, Type, Image as ImageIcon, Settings, Sparkles, BookOpen, AlertTriangle } from 'lucide-react';
 
-function MainPage() {
+const MainPage = React.memo(function MainPage() {
   const [inputMode, setInputMode] = useState<InputMode>('editor');
   const [latexInput, setLatexInput] = useState('');
   const [textInput, setTextInput] = useState('');
@@ -22,18 +22,17 @@ function MainPage() {
   const { solution, isLoading, error, solve, clear } = useMathSolver();
 
   useEffect(() => {
-  const check = () => {
-    const info = mathSolverAPI.getProviderInfo();
-    setApiStatus(prev => {
-      // فقط غيّر لو فيه فرق
-      if (prev.hasKeys === info.hasKeys && prev.model === info.model) return prev;
-      return { checked: true, hasKeys: info.hasKeys, model: info.model, provider: info.provider };
-    });
-  };
-  check();
-  const interval = setInterval(check, 5000); // غيّر لـ 5 ثواني بدل 2
-  return () => clearInterval(interval);
-}, []);
+    const check = () => {
+      const info = mathSolverAPI.getProviderInfo();
+      setApiStatus(prev => {
+        if (prev.hasKeys === info.hasKeys && prev.model === info.model) return prev;
+        return { checked: true, hasKeys: info.hasKeys, model: info.model, provider: info.provider };
+      });
+    };
+    check();
+    const interval = setInterval(check, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSolve = useCallback(async () => {
     const problem = inputMode === 'editor' ? latexInput : textInput;
@@ -49,7 +48,6 @@ function MainPage() {
 
   const handleOCRComplete = useCallback((latex: string) => {
     setLatexInput(latex);
-    setInputMode('editor');
   }, []);
 
   const inputModes: { id: InputMode; label: string; icon: typeof Calculator }[] = [
@@ -216,7 +214,7 @@ function MainPage() {
                 الفروع المدعومة
               </h3>
               <div className="flex flex-wrap gap-2">
-                {SUBJECTS.map(s => (
+                {SUBJECTS.map((s) => (
                   <span key={s.id} className="px-2 py-1 bg-white rounded-lg text-xs text-blue-700 border border-blue-100">
                     {s.name}
                   </span>
@@ -250,7 +248,7 @@ function MainPage() {
       </footer>
     </div>
   );
-}
+});
 
 export default function App() {
   return <MainPage />;
