@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { mathSolverAPI } from '../services/api';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '../utils/constants';
@@ -51,19 +52,19 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
     if (file) handleFile(file);
   };
 
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLLabelElement>) => {
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent<HTMLLabelElement>) => {
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLLabelElement>) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
@@ -82,26 +83,48 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="w-full">
+      {/* Portal for file input - completely outside the tab system */}
+      {createPortal(
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleInputChange}
+          style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
+        />,
+        document.body
+      )}
+
       {!preview ? (
-        <label
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            openFilePicker();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openFilePicker();
+            }
+          }}
           onDragOver={handleDragOver}
+          onDragEnter={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`block border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all select-none ${
+          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all select-none outline-none focus:ring-2 focus:ring-primary-500 ${
             isDragOver
               ? 'border-primary-500 bg-primary-50'
               : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
           }`}
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleInputChange}
-            className="hidden"
-          />
           <Upload className="mx-auto mb-3 text-gray-400" size={48} />
           <p className="text-lg font-medium text-gray-700 mb-1">
             {isDragOver ? 'أفلت الصورة هنا' : 'انقر لاختيار ملف أو اسحب صورة هنا'}
@@ -109,7 +132,7 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
           <p className="text-sm text-gray-500">
             JPG, PNG, WebP (الحد الأقصى 10 ميجابايت)
           </p>
-        </label>
+        </div>
       ) : (
         <div className="relative rounded-2xl overflow-hidden border border-gray-200">
           <img
@@ -127,7 +150,10 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
 
           <button
             type="button"
-            onClick={clearImage}
+            onClick={(e) => {
+              e.stopPropagation();
+              clearImage();
+            }}
             className="absolute top-3 left-3 p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
           >
             <X size={20} className="text-gray-700" />
