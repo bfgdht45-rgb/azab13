@@ -1,17 +1,17 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { MathEditor } from './components/MathEditor';
-import { ImageUploader } from './components/ImageUploader';
-import { SolutionDisplay } from './components/SolutionDisplay';
-import { SubjectSelector } from './components/SubjectSelector';
-import { DetailLevelSelector } from './components/DetailLevelSelector';
-import { SettingsPanel } from './components/SettingsPanel';
-import { useMathSolver } from './hooks/useMathSolver';
-import { mathSolverAPI } from './services/api';
-import type { MathSubject, InputMode } from './types';
-import { SUBJECTS, DETAIL_LEVELS } from './utils/constants';
+import { useState, useCallback, useEffect } from 'react';
+import { MathEditor } from './MathEditor';
+import { ImageUploader } from './ImageUploader';
+import { SolutionDisplay } from './SolutionDisplay';
+import { SubjectSelector } from './SubjectSelector';
+import { DetailLevelSelector } from './DetailLevelSelector';
+import { SettingsPanel } from './SettingsPanel';
+import { useMathSolver } from '../hooks/useMathSolver';
+import { mathSolverAPI } from '../services/api';
+import type { MathSubject, InputMode } from '../types';
+import { SUBJECTS, DETAIL_LEVELS } from '../utils/constants';
 import { Calculator, Type, Image as ImageIcon, Settings, Sparkles, BookOpen, AlertTriangle } from 'lucide-react';
 
-const MainPage = React.memo(function MainPage() {
+function MainPage() {
   const [inputMode, setInputMode] = useState<InputMode>('editor');
   const [latexInput, setLatexInput] = useState('');
   const [textInput, setTextInput] = useState('');
@@ -24,15 +24,12 @@ const MainPage = React.memo(function MainPage() {
   useEffect(() => {
     const check = () => {
       const info = mathSolverAPI.getProviderInfo();
-      setApiStatus(prev => {
-        if (prev.hasKeys === info.hasKeys && prev.model === info.model) return prev;
-        return { checked: true, hasKeys: info.hasKeys, model: info.model, provider: info.provider };
-      });
+      setApiStatus({ checked: true, hasKeys: info.hasKeys, model: info.model, provider: info.provider });
     };
     check();
-    const interval = setInterval(check, 5000);
+    const interval = setInterval(check, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [showSettings]);
 
   const handleSolve = useCallback(async () => {
     const problem = inputMode === 'editor' ? latexInput : textInput;
@@ -46,8 +43,10 @@ const MainPage = React.memo(function MainPage() {
     });
   }, [inputMode, latexInput, textInput, selectedSubject, detailLevel, solve]);
 
+  // ✅ تصليح: تحويل الوضع لـ editor بعد OCR
   const handleOCRComplete = useCallback((latex: string) => {
     setLatexInput(latex);
+    setInputMode('editor'); // ← ده السطر المهم!
   }, []);
 
   const inputModes: { id: InputMode; label: string; icon: typeof Calculator }[] = [
@@ -214,7 +213,7 @@ const MainPage = React.memo(function MainPage() {
                 الفروع المدعومة
               </h3>
               <div className="flex flex-wrap gap-2">
-                {SUBJECTS.map((s) => (
+                {SUBJECTS.map((s: typeof SUBJECTS[0]) => (
                   <span key={s.id} className="px-2 py-1 bg-white rounded-lg text-xs text-blue-700 border border-blue-100">
                     {s.name}
                   </span>
@@ -248,7 +247,7 @@ const MainPage = React.memo(function MainPage() {
       </footer>
     </div>
   );
-});
+}
 
 export default function App() {
   return <MainPage />;
