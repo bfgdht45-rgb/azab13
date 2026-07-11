@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { mathSolverAPI } from '../services/api';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '../utils/constants';
@@ -47,8 +48,6 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
     const file = e.target.files?.[0];
     if (file) handleFile(file);
   };
@@ -96,14 +95,29 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
-    <div className="w-full" onClick={(e) => e.stopPropagation()}>
+    <div className="w-full">
+      {/* Portal for file input - outside the tab system */}
+      {createPortal(
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleInputChange}
+          style={{ position: 'fixed', top: '-9999px', left: '-9999px', opacity: 0 }}
+        />,
+        document.body
+      )}
+
       {!preview ? (
         <div
           onClick={(e) => {
-            e.preventDefault();
             e.stopPropagation();
-            fileInputRef.current?.click();
+            openFilePicker();
           }}
           onDragOver={handleDragOver}
           onDragEnter={handleDragOver}
@@ -115,14 +129,6 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
               : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
           }`}
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleInputChange}
-            className="hidden"
-            onClick={(e) => e.stopPropagation()}
-          />
           <Upload className="mx-auto mb-3 text-gray-400" size={48} />
           <p className="text-lg font-medium text-gray-700 mb-1">
             {isDragOver ? 'أفلت الصورة هنا' : 'انقر لاختيار ملف أو اسحب صورة هنا'}
@@ -147,11 +153,7 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
           )}
 
           <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              clearImage();
-            }}
+            onClick={clearImage}
             className="absolute top-3 left-3 p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
           >
             <X size={20} className="text-gray-700" />
