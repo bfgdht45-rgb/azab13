@@ -47,6 +47,8 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     const file = e.target.files?.[0];
     if (file) handleFile(file);
   };
@@ -68,14 +70,12 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
     e.stopPropagation();
     setIsDragOver(false);
 
-    // Files dragged from desktop
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       handleFile(files[0]);
       return;
     }
 
-    // URLs dragged from browser
     const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
     if (url && url.match(/\.(jpg|jpeg|png|webp)/i)) {
       fetch(url)
@@ -97,10 +97,14 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full" onClick={(e) => e.stopPropagation()}>
       {!preview ? (
         <div
-          onClick={() => fileInputRef.current?.click()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            fileInputRef.current?.click();
+          }}
           onDragOver={handleDragOver}
           onDragEnter={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -117,6 +121,7 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
             accept="image/jpeg,image/png,image/webp"
             onChange={handleInputChange}
             className="hidden"
+            onClick={(e) => e.stopPropagation()}
           />
           <Upload className="mx-auto mb-3 text-gray-400" size={48} />
           <p className="text-lg font-medium text-gray-700 mb-1">
@@ -142,7 +147,11 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
           )}
 
           <button
-            onClick={clearImage}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              clearImage();
+            }}
             className="absolute top-3 left-3 p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
           >
             <X size={20} className="text-gray-700" />
