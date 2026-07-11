@@ -22,14 +22,18 @@ function MainPage() {
   const { solution, isLoading, error, solve, clear } = useMathSolver();
 
   useEffect(() => {
-    const check = () => {
-      const info = mathSolverAPI.getProviderInfo();
-      setApiStatus({ checked: true, hasKeys: info.hasKeys, model: info.model, provider: info.provider });
-    };
-    check();
-    const interval = setInterval(check, 2000);
-    return () => clearInterval(interval);
-  }, [showSettings]);
+  const check = () => {
+    const info = mathSolverAPI.getProviderInfo();
+    setApiStatus(prev => {
+      // فقط غيّر لو فيه فرق
+      if (prev.hasKeys === info.hasKeys && prev.model === info.model) return prev;
+      return { checked: true, hasKeys: info.hasKeys, model: info.model, provider: info.provider };
+    });
+  };
+  check();
+  const interval = setInterval(check, 5000); // غيّر لـ 5 ثواني بدل 2
+  return () => clearInterval(interval);
+}, []);
 
   const handleSolve = useCallback(async () => {
     const problem = inputMode === 'editor' ? latexInput : textInput;
