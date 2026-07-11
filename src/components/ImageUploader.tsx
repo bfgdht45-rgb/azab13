@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { Upload, X, Loader2, Camera } from 'lucide-react';
 import { mathSolverAPI } from '../services/api';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '../utils/constants';
 
@@ -49,7 +48,11 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (file) {
+      handleFile(file);
+    }
+    // ✅ مهم: نفضي الـ input عشان نقدر نختار نفس الملف تاني
+    e.target.value = '';
   };
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -89,37 +92,23 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
 
   return (
     <div className="w-full">
-      {/* Portal for file input - completely outside the tab system */}
-      {createPortal(
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handleInputChange}
-          style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
-        />,
-        document.body
-      )}
+      {/* ✅ Input مخفي جوه الكومبوننت - مفيش createPortal */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleInputChange}
+        className="hidden"
+      />
 
       {!preview ? (
         <div
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            openFilePicker();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              openFilePicker();
-            }
-          }}
+          onClick={openFilePicker}
           onDragOver={handleDragOver}
           onDragEnter={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all select-none outline-none focus:ring-2 focus:ring-primary-500 ${
+          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
             isDragOver
               ? 'border-primary-500 bg-primary-50'
               : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
@@ -127,11 +116,24 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
         >
           <Upload className="mx-auto mb-3 text-gray-400" size={48} />
           <p className="text-lg font-medium text-gray-700 mb-1">
-            {isDragOver ? 'أفلت الصورة هنا' : 'انقر لاختيار ملف أو اسحب صورة هنا'}
+            {isDragOver ? 'أفلت الصورة هنا' : 'انقر لاختيار صورة المسألة'}
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 mb-4">
             JPG, PNG, WebP (الحد الأقصى 10 ميجابايت)
           </p>
+          
+          {/* ✅ زرار واضح للموبايل */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openFilePicker();
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+          >
+            <Camera size={18} />
+            <span>اختر من المعرض</span>
+          </button>
         </div>
       ) : (
         <div className="relative rounded-2xl overflow-hidden border border-gray-200">
@@ -150,10 +152,7 @@ export function ImageUploader({ onOCRComplete }: ImageUploaderProps) {
 
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              clearImage();
-            }}
+            onClick={clearImage}
             className="absolute top-3 left-3 p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
           >
             <X size={20} className="text-gray-700" />
