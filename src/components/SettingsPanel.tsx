@@ -17,6 +17,40 @@ interface ModelConfig {
   badge?: string;
 }
 
+interface ExternalProvider {
+  id: string;
+  name: string;
+  nameAr: string;
+  baseUrl: string;
+  keyStorage: string;
+  modelStorage: string;
+  color: string;
+  badge?: string;
+}
+
+const EXTERNAL_PROVIDERS: ExternalProvider[] = [
+  {
+    id: 'bazaarlink',
+    name: 'BazaarLink',
+    nameAr: 'بازار لينك',
+    baseUrl: 'https://bazaarlink.ai/api/v1',
+    keyStorage: 'mathsolver_bazaarlink_key',
+    modelStorage: 'mathsolver_bazaarlink_model',
+    color: 'bg-gradient-to-br from-pink-500 to-rose-600',
+    badge: 'جديد',
+  },
+  {
+    id: 'cometapi',
+    name: 'CometAPI',
+    nameAr: 'كوميت API',
+    baseUrl: 'https://api.cometapi.com/v1',
+    keyStorage: 'mathsolver_cometapi_key',
+    modelStorage: 'mathsolver_cometapi_model',
+    color: 'bg-gradient-to-br from-cyan-500 to-blue-600',
+    badge: 'جديد',
+  },
+];
+
 const AVAILABLE_MODELS: ModelConfig[] = [
   {
     id: 'deepseek-ai/DeepSeek-V4-Pro',
@@ -84,6 +118,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeConfig, setActiveConfig] = useState<{model: string; hasKey: boolean}>({model: '', hasKey: false});
+  
+  const [externalKeys, setExternalKeys] = useState<Record<string, string>>({});
+  const [externalModels, setExternalModels] = useState<Record<string, string>>({});
+  const [showExternalKeys, setShowExternalKeys] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
@@ -96,6 +134,20 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setCustomBaseUrl(savedCustomUrl);
     setUseCustomUrl(savedUseCustom);
 
+    const keys: Record<string, string> = {};
+    const models: Record<string, string> = {};
+    const showKeys: Record<string, boolean> = {};
+    
+    EXTERNAL_PROVIDERS.forEach(provider => {
+      keys[provider.id] = localStorage.getItem(provider.keyStorage) || '';
+      models[provider.id] = localStorage.getItem(provider.modelStorage) || '';
+      showKeys[provider.id] = false;
+    });
+    
+    setExternalKeys(keys);
+    setExternalModels(models);
+    setShowExternalKeys(showKeys);
+
     const info = getActiveConfig();
     setActiveConfig(info);
   }, []);
@@ -103,7 +155,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const getActiveConfig = () => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
     const savedModel = localStorage.getItem('mathsolver_model') || '';
-    return { model: savedModel, hasKey: !!savedKey.trim() };
+    const hasExternalKey = EXTERNAL_PROVIDERS.some(p => {
+      const key = localStorage.getItem(p.keyStorage);
+      return key && key.trim().length > 0;
+    });
+    return { model: savedModel, hasKey: !!(savedKey.trim()) || hasExternalKey };
   };
 
   const handleSave = () => {
@@ -118,7 +174,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       localStorage.setItem('mathsolver_base_url', useCustomUrl && customBaseUrl ? customBaseUrl : model.baseUrl);
     }
 
-    setActiveConfig({ model: selectedModel, hasKey: !!apiKey.trim() });
+    EXTERNAL_PROVIDERS.forEach(provider => {
+      localStorage.setItem(provider.keyStorage, externalKeys[provider.id] || '');
+      localStorage.setItem(provider.modelStorage, externalModels[provider.id] || '');
+    });
+
+    setActiveConfig({ model: selectedModel, hasKey: !!(apiKey.trim()) || EXTERNAL_PROVIDERS.some(p => !!(externalKeys[p.id]?.trim())) });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -130,6 +191,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'baseten': return 'Baseten Inference';
       case 'openai': return 'OpenAI';
       case 'gemini': return 'Google AI Studio';
+      case 'bazaarlink': return 'BazaarLink';
+      case 'cometapi': return 'CometAPI';
       default: return provider;
     }
   };
@@ -139,6 +202,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'baseten': return 'https://www.baseten.co/';
       case 'openai': return 'https://platform.openai.com/api-keys';
       case 'gemini': return 'https://aistudio.google.com/app/apikey';
+      case 'bazaarlink': return 'https://bazaarlink.ai/';
+      case 'cometapi': return 'https://cometapi.com/';
       default: return '#';
     }
   };
@@ -148,7 +213,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" dir="rtl">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto animate-fade-in">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
@@ -168,7 +232,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Status Banner */}
           {activeConfig.hasKey ? (
             <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
               <Check className="text-green-600 flex-shrink-0" size={20} />
@@ -189,11 +252,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
           )}
 
-          {/* Model Selection */}
           <div className="space-y-3">
             <h3 className="font-bold text-gray-800 flex items-center gap-2">
               <Cpu size={18} />
-              اختر الموديل
+              اختر الموديل (الأساسي)
             </h3>
             <div className="grid gap-3">
               {AVAILABLE_MODELS.map((model) => (
@@ -234,7 +296,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
-          {/* Custom Base URL Option */}
           <div className="space-y-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -261,11 +322,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             )}
           </div>
 
-          {/* API Key Input */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Key size={18} className="text-gray-600" />
-              <h3 className="font-bold text-gray-800">مفتاح API</h3>
+              <h3 className="font-bold text-gray-800">مفتاح API (المزود الأساسي)</h3>
               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                 {getProviderLabel(selectedModelConfig?.provider || 'baseten')}
               </span>
@@ -292,7 +352,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </button>
             </div>
 
-            {/* Model Info */}
             {selectedModelConfig && (
               <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 space-y-1">
                 <p><strong>المزود:</strong> {getProviderLabel(selectedModelConfig.provider)}</p>
@@ -314,17 +373,72 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </p>
           </div>
 
-          {/* Info Box */}
+          <div className="space-y-4 border-t border-gray-200 pt-6">
+            <h3 className="font-bold text-gray-800 flex items-center gap-2">
+              <Zap size={18} />
+              مزودين إضافيين (OpenAI-Compatible)
+            </h3>
+            
+            {EXTERNAL_PROVIDERS.map((provider) => (
+              <div key={provider.id} className="space-y-3 p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg ${provider.color} flex items-center justify-center text-white font-bold flex-shrink-0`}>
+                    {provider.name[0]}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900">{provider.nameAr}</span>
+                      {provider.badge && (
+                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                          {provider.badge}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">{provider.baseUrl}</div>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type={showExternalKeys[provider.id] ? 'text' : 'password'}
+                    value={externalKeys[provider.id] || ''}
+                    onChange={(e) => setExternalKeys(prev => ({ ...prev, [provider.id]: e.target.value }))}
+                    placeholder={`مفتاح ${provider.nameAr}...`}
+                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
+                    dir="ltr"
+                  />
+                  <button
+                    onClick={() => setShowExternalKeys(prev => ({ ...prev, [provider.id]: !prev[provider.id] }))}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                  >
+                    {showExternalKeys[provider.id] ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  value={externalModels[provider.id] || ''}
+                  onChange={(e) => setExternalModels(prev => ({ ...prev, [provider.id]: e.target.value }))}
+                  placeholder="اسم الموديل (اختياري - يتم اختيار أفضل موديل تلقائياً)"
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
+                  dir="ltr"
+                />
+                <p className="text-xs text-gray-500">
+                  اترك فارغاً لاختيار أفضل موديل تلقائياً من: {provider.nameAr}
+                </p>
+              </div>
+            ))}
+          </div>
+
           <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
             <Info className="text-blue-600 flex-shrink-0 mt-0.5" size={18} />
             <div className="text-sm text-blue-800">
               <p className="font-semibold mb-1">🔒 الخصوصية والأمان</p>
-              <p>المفاتيح تُحفظ في متصفحك فقط (LocalStorage) ولا تُرفع على أي خادم. يتم إرسالها مباشرة للـ API من Backend.</p>
+              <p>المفاتيح تُحفظ في متصفحك فقط (LocalStorage) ولا تُرفع على أي خادم. يتم إرسالها مباشرة للـ API.</p>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="p-6 border-t border-gray-100 flex gap-3">
           <button
             onClick={handleSave}
