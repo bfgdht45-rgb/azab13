@@ -96,3 +96,16 @@ export interface AppState {
   error: string | null;
   history: MathProblem[];
 }
+
+// ✅ نوع جديد: إعدادات المزود
+export interface ProviderConfig {
+  id: string;
+  name: string;
+  nameAr: string;
+  baseUrl: string;
+  apiKey: string;
+  models: string[];
+  preferredModels: string[];
+  color: string;
+  badge?: string;
+}
