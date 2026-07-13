@@ -17,7 +17,6 @@ interface ModelConfig {
   badge?: string;
 }
 
-// ✅ مزودين جداد
 interface NewProviderConfig {
   id: string;
   name: string;
@@ -88,7 +87,6 @@ const AVAILABLE_MODELS: ModelConfig[] = [
   },
 ];
 
-// ✅ إعدادات المزودين الجداد
 const NEW_PROVIDERS: NewProviderConfig[] = [
   {
     id: 'bazaarlink',
@@ -110,6 +108,16 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     color: 'bg-gradient-to-br from-cyan-500 to-blue-600',
     badge: 'جديد',
   },
+  {
+    id: 'cerebras',
+    name: 'Cerebras',
+    nameAr: 'سيريبراس',
+    keyStorage: 'mathsolver_cerebras_key',
+    modelStorage: 'mathsolver_cerebras_model',
+    baseUrl: 'https://api.cerebras.ai/v1',
+    color: 'bg-gradient-to-br from-yellow-500 to-orange-600',
+    badge: 'مجاني',
+  },
 ];
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
@@ -121,11 +129,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [saved, setSaved] = useState(false);
   const [activeConfig, setActiveConfig] = useState<{model: string; hasKey: boolean}>({model: '', hasKey: false});
 
-  // ✅ حالات المزودين الجداد
   const [bazaarlinkKey, setBazaarlinkKey] = useState('');
   const [cometapiKey, setCometapiKey] = useState('');
+  const [cerebrasKey, setCerebrasKey] = useState('');
   const [showBazaarlinkKey, setShowBazaarlinkKey] = useState(false);
   const [showCometapiKey, setShowCometapiKey] = useState(false);
+  const [showCerebrasKey, setShowCerebrasKey] = useState(false);
 
   useEffect(() => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
@@ -138,9 +147,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setCustomBaseUrl(savedCustomUrl);
     setUseCustomUrl(savedUseCustom);
 
-    // ✅ قراءة مفاتيح المزودين الجداد
     setBazaarlinkKey(localStorage.getItem('mathsolver_bazaarlink_key') || '');
     setCometapiKey(localStorage.getItem('mathsolver_cometapi_key') || '');
+    setCerebrasKey(localStorage.getItem('mathsolver_cerebras_key') || '');
 
     const info = getActiveConfig();
     setActiveConfig(info);
@@ -148,12 +157,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   const getActiveConfig = () => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
-    const savedModel = localStorage.getItem('mathsolver_model') || '';
     const hasBazaarlink = !!(localStorage.getItem('mathsolver_bazaarlink_key') || '').trim();
     const hasCometapi = !!(localStorage.getItem('mathsolver_cometapi_key') || '').trim();
+    const hasCerebras = !!(localStorage.getItem('mathsolver_cerebras_key') || '').trim();
     return { 
       model: savedModel, 
-      hasKey: !!savedKey.trim() || hasBazaarlink || hasCometapi 
+      hasKey: !!savedKey.trim() || hasBazaarlink || hasCometapi || hasCerebras 
     };
   };
 
@@ -163,9 +172,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     localStorage.setItem('mathsolver_custom_url', customBaseUrl);
     localStorage.setItem('mathsolver_use_custom', useCustomUrl.toString());
 
-    // ✅ حفظ مفاتيح المزودين الجداد
     localStorage.setItem('mathsolver_bazaarlink_key', bazaarlinkKey);
     localStorage.setItem('mathsolver_cometapi_key', cometapiKey);
+    localStorage.setItem('mathsolver_cerebras_key', cerebrasKey);
 
     const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
     if (model) {
@@ -173,16 +182,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       localStorage.setItem('mathsolver_base_url', useCustomUrl && customBaseUrl ? customBaseUrl : model.baseUrl);
     }
 
-    // ✅ لو المستخدم اختار BazaarLink أو CometAPI، نحفظهم كمُزوِّد
-    if (bazaarlinkKey.trim() && !cometapiKey.trim()) {
+    if (bazaarlinkKey.trim() && !cometapiKey.trim() && !cerebrasKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'bazaarlink');
-    } else if (cometapiKey.trim() && !bazaarlinkKey.trim()) {
+    } else if (cometapiKey.trim() && !bazaarlinkKey.trim() && !cerebrasKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cometapi');
+    } else if (cerebrasKey.trim() && !bazaarlinkKey.trim() && !cometapiKey.trim()) {
+      localStorage.setItem('mathsolver_provider', 'cerebras');
     }
 
     setActiveConfig({ 
       model: selectedModel, 
-      hasKey: !!apiKey.trim() || !!bazaarlinkKey.trim() || !!cometapiKey.trim() 
+      hasKey: !!apiKey.trim() || !!bazaarlinkKey.trim() || !!cometapiKey.trim() || !!cerebrasKey.trim() 
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -197,6 +207,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'gemini': return 'Google AI Studio';
       case 'bazaarlink': return 'BazaarLink';
       case 'cometapi': return 'CometAPI';
+      case 'cerebras': return 'Cerebras';
       default: return provider;
     }
   };
@@ -208,6 +219,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'gemini': return 'https://aistudio.google.com/app/apikey';
       case 'bazaarlink': return 'https://bazaarlink.ai/';
       case 'cometapi': return 'https://cometapi.com/';
+      case 'cerebras': return 'https://cloud.cerebras.ai/';
       default: return '#';
     }
   };
@@ -217,7 +229,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" dir="rtl">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto animate-fade-in">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
@@ -237,7 +248,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Status Banner */}
           {activeConfig.hasKey ? (
             <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
               <Check className="text-green-600 flex-shrink-0" size={20} />
@@ -258,7 +268,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
           )}
 
-          {/* Model Selection */}
           <div className="space-y-3">
             <h3 className="font-bold text-gray-800 flex items-center gap-2">
               <Cpu size={18} />
@@ -303,7 +312,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
-          {/* Custom Base URL Option */}
           <div className="space-y-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -330,7 +338,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             )}
           </div>
 
-          {/* API Key Input */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Key size={18} className="text-gray-600" />
@@ -361,7 +368,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </button>
             </div>
 
-            {/* Model Info */}
             {selectedModelConfig && (
               <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 space-y-1">
                 <p><strong>المزود:</strong> {getProviderLabel(selectedModelConfig.provider)}</p>
@@ -383,7 +389,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </p>
           </div>
 
-          {/* ✅ قسم المزودين الجداد */}
           <div className="space-y-4 border-t border-gray-200 pt-6">
             <h3 className="font-bold text-gray-800 flex items-center gap-2">
               <Zap size={18} />
@@ -391,17 +396,29 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </h3>
 
             {NEW_PROVIDERS.map((provider) => {
-              const keyValue = provider.id === 'bazaarlink' ? bazaarlinkKey : cometapiKey;
-              const setKeyValue = provider.id === 'bazaarlink' ? setBazaarlinkKey : setCometapiKey;
-              const showKeyValue = provider.id === 'bazaarlink' ? showBazaarlinkKey : showCometapiKey;
-              const setShowKeyValue = provider.id === 'bazaarlink' ? setShowBazaarlinkKey : setShowCometapiKey;
+              const keyValue = 
+                provider.id === 'bazaarlink' ? bazaarlinkKey : 
+                provider.id === 'cometapi' ? cometapiKey : 
+                cerebrasKey;
+              const setKeyValue = 
+                provider.id === 'bazaarlink' ? setBazaarlinkKey : 
+                provider.id === 'cometapi' ? setCometapiKey : 
+                setCerebrasKey;
+              const showKeyValue = 
+                provider.id === 'bazaarlink' ? showBazaarlinkKey : 
+                provider.id === 'cometapi' ? showCometapiKey : 
+                showCerebrasKey;
+              const setShowKeyValue = 
+                provider.id === 'bazaarlink' ? setShowBazaarlinkKey : 
+                provider.id === 'cometapi' ? setShowCometapiKey : 
+                setShowCerebrasKey;
               const hasKey = !!keyValue.trim();
 
               return (
                 <div key={provider.id} className={`p-4 rounded-xl border-2 transition-all ${hasKey ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white'}`}>
                   <div className="flex items-center gap-3 mb-3">
                     <div className={`w-10 h-10 rounded-xl ${provider.color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
-                      {provider.id === 'bazaarlink' ? 'Bz' : 'Co'}
+                      {provider.id === 'bazaarlink' ? 'Bz' : provider.id === 'cometapi' ? 'Co' : 'Ce'}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
@@ -458,7 +475,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             })}
           </div>
 
-          {/* Info Box */}
           <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
             <Info className="text-blue-600 flex-shrink-0 mt-0.5" size={18} />
             <div className="text-sm text-blue-800">
@@ -468,7 +484,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="p-6 border-t border-gray-100 flex gap-3">
           <button
             onClick={handleSave}
