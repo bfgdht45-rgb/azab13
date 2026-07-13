@@ -1,11 +1,6 @@
 import type { SolverRequest, SolverResponse, OCRResult, ProviderConfig } from '../types';
 
 // =====================================
-// ✅ Proxy URL (لـ BazaarLink بس)
-// =====================================
-const PROXY_URL = '/api/proxy';
-
-// =====================================
 // ✅ إعدادات المزودين
 // =====================================
 
@@ -122,67 +117,22 @@ function getStoredConfig(): StoredConfig {
 }
 
 // =====================================
-// ✅ Proxy Helper (لـ BazaarLink بس)
+// Fetch Models (مباشرة من غير Proxy)
 // =====================================
 
-async function proxyFetch(baseUrl: string, endpoint: string, apiKey: string, body?: any, method: string = 'POST') {
-  const response = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ baseUrl, endpoint, apiKey, body, method }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Proxy error: ${response.status} - ${errorText}`);
-  }
-
-  return response.json();
-}
-
-// =====================================
-// ✅ Direct Fetch (لـ CometAPI و Cerebras)
-// =====================================
-
-async function directFetch(baseUrl: string, endpoint: string, apiKey: string, body?: any, method: string = 'POST') {
-  const url = `${baseUrl}${endpoint}`;
-  
-  const headers: Record<string, string> = {
-    'Authorization': `Bearer ${apiKey}`,
-    'Content-Type': 'application/json',
-  };
-
-  const fetchOptions: RequestInit = {
-    method,
-    headers,
-  };
-
-  if (body && method !== 'GET') {
-    fetchOptions.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(url, fetchOptions);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API error: ${response.status} - ${errorText}`);
-  }
-
-  return response.json();
-}
-
-// =====================================
-// Fetch Models
-// =====================================
-
-async function fetchAvailableModels(baseUrl: string, apiKey: string, useProxy: boolean = false): Promise<string[]> {
+async function fetchAvailableModels(baseUrl: string, apiKey: string): Promise<string[]> {
   try {
-    const data = useProxy 
-      ? await proxyFetch(baseUrl, '/models', apiKey, undefined, 'GET')
-      : await directFetch(baseUrl, '/models', apiKey, undefined, 'GET');
+    const response = await fetch(`${baseUrl}/models`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
     return data.data?.map((m: any) => m.id) || [];
-  } catch (err) {
-    console.error('fetchAvailableModels error:', err);
+  } catch {
     return [];
   }
 }
@@ -233,19 +183,19 @@ export const mathSolverAPI = {
   fetchBazaarLinkModels: async (): Promise<string[]> => {
     const cfg = getStoredConfig();
     if (!cfg.bazaarlinkKey) return [];
-    return fetchAvailableModels(BAZAARLINK_CONFIG.baseUrl, cfg.bazaarlinkKey, true); // ✅ Proxy
+    return fetchAvailableModels(BAZAARLINK_CONFIG.baseUrl, cfg.bazaarlinkKey);
   },
 
   fetchCometAPIModels: async (): Promise<string[]> => {
     const cfg = getStoredConfig();
     if (!cfg.cometapiKey) return [];
-    return fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey, false); // ❌ Direct
+    return fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
   },
 
   fetchCerebrasModels: async (): Promise<string[]> => {
     const cfg = getStoredConfig();
     if (!cfg.cerebrasKey) return [];
-    return fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey, false); // ❌ Direct
+    return fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
   },
 
   solve: async (request: SolverRequest): Promise<SolverResponse> => {
@@ -265,19 +215,19 @@ export const mathSolverAPI = {
       let result;
 
       if (cfg.provider === 'bazaarlink' && cfg.bazaarlinkKey) {
-        const models = await fetchAvailableModels(BAZAARLINK_CONFIG.baseUrl, cfg.bazaarlinkKey, true);
+        const models = await fetchAvailableModels(BAZAARLINK_CONFIG.baseUrl, cfg.bazaarlinkKey);
         const model = cfg.bazaarlinkModel || selectBestModel(models, BAZAARLINK_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.bazaarlinkKey, model, BAZAARLINK_CONFIG.baseUrl, prompt, true); // ✅ Proxy
+        result = await callOpenAICompatible(cfg.bazaarlinkKey, model, BAZAARLINK_CONFIG.baseUrl, prompt);
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
-        const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey, false);
+        const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
         const model = cfg.cometapiModel || selectBestModel(models, COMETAPI_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.cometapiKey, model, COMETAPI_CONFIG.baseUrl, prompt, false); // ❌ Direct
+        result = await callOpenAICompatible(cfg.cometapiKey, model, COMETAPI_CONFIG.baseUrl, prompt);
       }
       else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
-        const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey, false);
+        const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
         const model = cfg.cerebrasModel || selectBestModel(models, CEREBRAS_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.cerebrasKey, model, CEREBRAS_CONFIG.baseUrl, prompt, false); // ❌ Direct
+        result = await callOpenAICompatible(cfg.cerebrasKey, model, CEREBRAS_CONFIG.baseUrl, prompt);
       }
       else if (cfg.provider === 'baseten' || cfg.baseUrl.includes('baseten')) {
         result = await callBasetenDirect(cfg.apiKey, cfg.model, cfg.baseUrl, prompt);
@@ -341,19 +291,19 @@ export const mathSolverAPI = {
       let confidence = 0.95;
 
       if (cfg.provider === 'bazaarlink' && cfg.bazaarlinkKey) {
-        const models = await fetchAvailableModels(BAZAARLINK_CONFIG.baseUrl, cfg.bazaarlinkKey, true);
+        const models = await fetchAvailableModels(BAZAARLINK_CONFIG.baseUrl, cfg.bazaarlinkKey);
         const model = cfg.bazaarlinkModel || selectBestModel(models, BAZAARLINK_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.bazaarlinkKey, model, BAZAARLINK_CONFIG.baseUrl, base64Image, mimeType, true); // ✅ Proxy
+        extractedText = await callOpenAIVisionCompatible(cfg.bazaarlinkKey, model, BAZAARLINK_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
-        const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey, false);
+        const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
         const model = cfg.cometapiModel || selectBestModel(models, COMETAPI_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.cometapiKey, model, COMETAPI_CONFIG.baseUrl, base64Image, mimeType, false); // ❌ Direct
+        extractedText = await callOpenAIVisionCompatible(cfg.cometapiKey, model, COMETAPI_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
-        const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey, false);
+        const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
         const model = cfg.cerebrasModel || selectBestModel(models, CEREBRAS_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.cerebrasKey, model, CEREBRAS_CONFIG.baseUrl, base64Image, mimeType, false); // ❌ Direct
+        extractedText = await callOpenAIVisionCompatible(cfg.cerebrasKey, model, CEREBRAS_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'gemini' || cfg.model.includes('gemini')) {
         extractedText = await callGeminiVision(cfg.apiKey, cfg.model, base64Image, mimeType);
@@ -452,24 +402,31 @@ function cleanExtractedText(text: string): string {
 }
 
 // =====================================
-// ✅ API Calls (مع useProxy flag)
+// API Calls (مباشرة من غير Proxy)
 // =====================================
 
-async function callOpenAICompatible(apiKey: string, model: string, baseUrl: string, prompt: string, useProxy: boolean = false) {
-  const body = {
-    model: model,
-    messages: [
-      { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
-      { role: 'user', content: prompt },
-    ],
-    temperature: 0.2,
-    max_tokens: 4000,
-  };
-
-  const data = useProxy 
-    ? await proxyFetch(baseUrl, '/chat/completions', apiKey, body)
-    : await directFetch(baseUrl, '/chat/completions', apiKey, body);
-
+async function callOpenAICompatible(apiKey: string, model: string, baseUrl: string, prompt: string) {
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.2,
+      max_tokens: 4000,
+    }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API error: ${response.status} - ${errorText}`);
+  }
+  const data = await response.json();
   const content = data.choices?.[0]?.message?.content || '';
   try {
     return JSON.parse(content);
@@ -482,24 +439,31 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
   }
 }
 
-async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string, useProxy: boolean = false): Promise<string> {
-  const body = {
-    model: model,
-    messages: [
-      { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
-      { role: 'user', content: [
-        { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
-        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
-      ]},
-    ],
-    temperature: 0.1,
-    max_tokens: 2000,
-  };
-
-  const data = useProxy
-    ? await proxyFetch(baseUrl, '/chat/completions', apiKey, body)
-    : await directFetch(baseUrl, '/chat/completions', apiKey, body);
-
+async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string): Promise<string> {
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'user', content: [
+          { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
+        ]},
+      ],
+      temperature: 0.1,
+      max_tokens: 2000,
+    }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Vision API error: ${response.status} - ${errorText}`);
+  }
+  const data = await response.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
@@ -532,50 +496,83 @@ async function callGeminiVision(apiKey: string, model: string, base64Image: stri
 }
 
 async function callOpenAIVision(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
-  const data = await directFetch('https://api.openai.com/v1', '/chat/completions', apiKey, {
-    model: model || 'gpt-4o',
-    messages: [
-      { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
-      { role: 'user', content: [
-        { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
-        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } },
-      ]},
-    ],
-    max_tokens: 2000,
-    temperature: 0.1,
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model || 'gpt-4o',
+      messages: [
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'user', content: [
+          { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } },
+        ]},
+      ],
+      max_tokens: 2000,
+      temperature: 0.1,
+    }),
   });
-
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenAI Vision API error: ${response.status} - ${errorText}`);
+  }
+  const data = await response.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
 async function callBasetenVision(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string): Promise<string> {
-  const data = await directFetch(baseUrl, '/chat/completions', apiKey, {
-    model: model,
-    messages: [
-      { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
-      { role: 'user', content: [
-        { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
-        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
-      ]},
-    ],
-    temperature: 0.1,
-    max_tokens: 2000,
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'user', content: [
+          { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
+        ]},
+      ],
+      temperature: 0.1,
+      max_tokens: 2000,
+    }),
   });
-
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Baseten Vision API error: ${response.status} - ${errorText}`);
+  }
+  const data = await response.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
 async function callBasetenDirect(apiKey: string, model: string, baseUrl: string, prompt: string) {
-  const data = await directFetch(baseUrl, '/chat/completions', apiKey, {
-    model: model,
-    messages: [
-      { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
-      { role: 'user', content: prompt },
-    ],
-    temperature: 0.2,
-    max_tokens: 4000,
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.2,
+      max_tokens: 4000,
+    }),
   });
-
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Baseten API error: ${response.status} - ${errorText}`);
+  }
+  const data = await response.json();
   const content = data.choices?.[0]?.message?.content || '';
   try {
     return JSON.parse(content);
@@ -589,17 +586,24 @@ async function callBasetenDirect(apiKey: string, model: string, baseUrl: string,
 }
 
 async function callOpenAIDirect(apiKey: string, model: string, prompt: string) {
-  const data = await directFetch('https://api.openai.com/v1', '/chat/completions', apiKey, {
-    model: model || 'gpt-4o',
-    messages: [
-      { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
-      { role: 'user', content: prompt },
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.2,
-    max_tokens: 4000,
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model || 'gpt-4o',
+      messages: [
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'user', content: prompt },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+      max_tokens: 4000,
+    }),
   });
-
+  const data = await response.json();
   return JSON.parse(data.choices[0].message.content);
 }
 
