@@ -1,4 +1,6 @@
-export default async function handler(req, res) {
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -15,13 +17,13 @@ export default async function handler(req, res) {
 
   try {
     const url = `${baseUrl}${endpoint}`;
-
-    const headers = {
+    
+    const headers: Record<string, string> = {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     };
 
-    const fetchOptions = {
+    const fetchOptions: RequestInit = {
       method,
       headers,
     };
@@ -34,7 +36,7 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     return res.status(response.status).json(data);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Proxy error:', error);
     return res.status(500).json({ 
       error: 'Proxy request failed', 
