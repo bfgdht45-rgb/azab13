@@ -124,18 +124,31 @@ function selectBestModel(availableModels: string[], preferredModels: string[]): 
 }
 
 export const mathSolverAPI = {
- hasApiKeys: (): boolean => {
-  const cfg = getStoredConfig();
-  return !!(cfg.apiKey || cfg.bazaarlinkKey || cfg.cometapiKey);
-},
+  hasApiKeys: (): boolean => {
+    const cfg = getStoredConfig();
+    return !!(cfg.apiKey || cfg.bazaarlinkKey || cfg.cometapiKey);
+  },
 
   getProviderInfo: () => {
     const cfg = getStoredConfig();
     const modelName = cfg.model.split('/').pop() || cfg.model;
+    
+    // ✅ تحديد الموديل النشط حسب المزود
+    let activeModel = modelName;
+    let activeProvider = cfg.provider;
+    
+    if (cfg.provider === 'bazaarlink' && cfg.bazaarlinkKey) {
+      activeModel = cfg.bazaarlinkModel || 'BazaarLink Auto';
+      activeProvider = 'bazaarlink';
+    } else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
+      activeModel = cfg.cometapiModel || 'CometAPI Auto';
+      activeProvider = 'cometapi';
+    }
+    
     return {
       hasKeys: !!(cfg.apiKey || cfg.bazaarlinkKey || cfg.cometapiKey),
-      provider: cfg.provider,
-      model: modelName,
+      provider: activeProvider,
+      model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
     };
   },
