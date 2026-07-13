@@ -74,10 +74,10 @@ function getStoredConfig() {
     baseUrl: localStorage.getItem('mathsolver_base_url') || 'https://inference.baseten.co/v1',
     customUrl: localStorage.getItem('mathsolver_custom_url') || '',
     useCustom: localStorage.getItem('mathsolver_use_custom') === 'true',
+    
+    // ✅ المفاتيح الجديدة
     bazaarlinkKey: localStorage.getItem('mathsolver_bazaarlink_key') || '',
-    bazaarlinkModel: localStorage.getItem('mathsolver_bazaarlink_model') || '',
     cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
-    cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
   };
 }
 
@@ -106,10 +106,10 @@ function selectBestModel(availableModels: string[], preferredModels: string[]): 
 }
 
 export const mathSolverAPI = {
-  hasApiKeys: (): boolean => {
-    const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.bazaarlinkKey || cfg.cometapiKey);
-  },
+ hasApiKeys: (): boolean => {
+  const cfg = getStoredConfig();
+  return !!(cfg.apiKey || cfg.bazaarlinkKey || cfg.cometapiKey);
+},
 
   getProviderInfo: () => {
     const cfg = getStoredConfig();
