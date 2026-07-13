@@ -241,7 +241,7 @@ function MainPage() {
 
       <footer className="bg-white border-t border-gray-100 mt-12">
         <div className="max-w-6xl mx-auto px-4 py-6 text-center text-sm text-gray-500">
-          <p>حاسب الرياضيات © 2026 - يدعم DeepSeek V4, Kimi K2.6, GPT-OSS, GLM-5, Gemini Flash</p>
+          <p>حاسب الرياضيات © 2026 - يدعم DeepSeek V4, Kimi K2.6, GPT-OSS, GLM-5, Gemini Flash, Cerebras</p>
         </div>
       </footer>
     </div>
