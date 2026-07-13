@@ -15,12 +15,21 @@ interface ModelConfig {
   description: string;
   color: string;
   badge?: string;
-  isExternal?: boolean;
 }
 
-// ✅ كل الموديلات (الأساسية + الخارجية) في قائمة واحدة
+// ✅ مزودين جداد
+interface NewProviderConfig {
+  id: string;
+  name: string;
+  nameAr: string;
+  keyStorage: string;
+  modelStorage: string;
+  baseUrl: string;
+  color: string;
+  badge?: string;
+}
+
 const AVAILABLE_MODELS: ModelConfig[] = [
-  // الموديلات الأساسية
   {
     id: 'deepseek-ai/DeepSeek-V4-Pro',
     name: 'DeepSeek V4 Pro',
@@ -77,28 +86,29 @@ const AVAILABLE_MODELS: ModelConfig[] = [
     description: 'مباشر من OpenAI',
     color: 'bg-gradient-to-br from-green-500 to-emerald-600',
   },
-  // ✅ المزودين الجداد - بقوا قابلين للاختيار
+];
+
+// ✅ إعدادات المزودين الجداد
+const NEW_PROVIDERS: NewProviderConfig[] = [
   {
-    id: 'bazaarlink-auto',
+    id: 'bazaarlink',
     name: 'BazaarLink',
     nameAr: 'بازار لينك',
-    provider: 'bazaarlink',
+    keyStorage: 'mathsolver_bazaarlink_key',
+    modelStorage: 'mathsolver_bazaarlink_model',
     baseUrl: 'https://bazaarlink.ai/api/v1',
-    description: 'أفضل موديل تلقائياً من BazaarLink',
     color: 'bg-gradient-to-br from-pink-500 to-rose-600',
     badge: 'جديد',
-    isExternal: true,
   },
   {
-    id: 'cometapi-auto',
+    id: 'cometapi',
     name: 'CometAPI',
     nameAr: 'كوميت API',
-    provider: 'cometapi',
+    keyStorage: 'mathsolver_cometapi_key',
+    modelStorage: 'mathsolver_cometapi_model',
     baseUrl: 'https://api.cometapi.com/v1',
-    description: 'أفضل موديل تلقائياً من CometAPI',
     color: 'bg-gradient-to-br from-cyan-500 to-blue-600',
     badge: 'جديد',
-    isExternal: true,
   },
 ];
 
@@ -110,8 +120,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeConfig, setActiveConfig] = useState<{model: string; hasKey: boolean}>({model: '', hasKey: false});
-  
-  // ✅ مفاتيح المزودين الخارجيين
+
+  // ✅ حالات المزودين الجداد
   const [bazaarlinkKey, setBazaarlinkKey] = useState('');
   const [cometapiKey, setCometapiKey] = useState('');
   const [showBazaarlinkKey, setShowBazaarlinkKey] = useState(false);
@@ -128,7 +138,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setCustomBaseUrl(savedCustomUrl);
     setUseCustomUrl(savedUseCustom);
 
-    // ✅ تحميل مفاتيح المزودين الجداد
+    // ✅ قراءة مفاتيح المزودين الجداد
     setBazaarlinkKey(localStorage.getItem('mathsolver_bazaarlink_key') || '');
     setCometapiKey(localStorage.getItem('mathsolver_cometapi_key') || '');
 
@@ -138,43 +148,42 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   const getActiveConfig = () => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
-    const bKey = localStorage.getItem('mathsolver_bazaarlink_key') || '';
-    const cKey = localStorage.getItem('mathsolver_cometapi_key') || '';
     const savedModel = localStorage.getItem('mathsolver_model') || '';
+    const hasBazaarlink = !!(localStorage.getItem('mathsolver_bazaarlink_key') || '').trim();
+    const hasCometapi = !!(localStorage.getItem('mathsolver_cometapi_key') || '').trim();
     return { 
       model: savedModel, 
-      hasKey: !!(savedKey.trim() || bKey.trim() || cKey.trim()) 
+      hasKey: !!savedKey.trim() || hasBazaarlink || hasCometapi 
     };
   };
 
   const handleSave = () => {
-    const selected = AVAILABLE_MODELS.find(m => m.id === selectedModel);
-    
-    // ✅ حفظ المزود الأساسي
-    if (selected?.isExternal) {
-      // لو اخترنا مزود خارجي، نحفظ provider بتاعه
-      localStorage.setItem('mathsolver_provider', selected.provider);
-      localStorage.setItem('mathsolver_model', selected.id);
-      localStorage.setItem('mathsolver_base_url', selected.baseUrl);
-      localStorage.setItem('mathsolver_api_key', ''); // نفضي المفتاح الأساسي
-    } else {
-      // المزود العادي
-      localStorage.setItem('mathsolver_api_key', apiKey);
-      localStorage.setItem('mathsolver_model', selectedModel);
-      localStorage.setItem('mathsolver_custom_url', customBaseUrl);
-      localStorage.setItem('mathsolver_use_custom', useCustomUrl.toString());
-      
-      if (selected) {
-        localStorage.setItem('mathsolver_provider', selected.provider);
-        localStorage.setItem('mathsolver_base_url', useCustomUrl && customBaseUrl ? customBaseUrl : selected.baseUrl);
-      }
-    }
+    localStorage.setItem('mathsolver_api_key', apiKey);
+    localStorage.setItem('mathsolver_model', selectedModel);
+    localStorage.setItem('mathsolver_custom_url', customBaseUrl);
+    localStorage.setItem('mathsolver_use_custom', useCustomUrl.toString());
 
-    // ✅ حفظ مفاتيح المزودين الخارجيين
+    // ✅ حفظ مفاتيح المزودين الجداد
     localStorage.setItem('mathsolver_bazaarlink_key', bazaarlinkKey);
     localStorage.setItem('mathsolver_cometapi_key', cometapiKey);
 
-    setActiveConfig(getActiveConfig());
+    const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+    if (model) {
+      localStorage.setItem('mathsolver_provider', model.provider);
+      localStorage.setItem('mathsolver_base_url', useCustomUrl && customBaseUrl ? customBaseUrl : model.baseUrl);
+    }
+
+    // ✅ لو المستخدم اختار BazaarLink أو CometAPI، نحفظهم كمُزوِّد
+    if (bazaarlinkKey.trim() && !cometapiKey.trim()) {
+      localStorage.setItem('mathsolver_provider', 'bazaarlink');
+    } else if (cometapiKey.trim() && !bazaarlinkKey.trim()) {
+      localStorage.setItem('mathsolver_provider', 'cometapi');
+    }
+
+    setActiveConfig({ 
+      model: selectedModel, 
+      hasKey: !!apiKey.trim() || !!bazaarlinkKey.trim() || !!cometapiKey.trim() 
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -183,9 +192,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   const getProviderLabel = (provider: string) => {
     switch(provider) {
-      case 'baseten': return 'Baseten';
+      case 'baseten': return 'Baseten Inference';
       case 'openai': return 'OpenAI';
-      case 'gemini': return 'Google AI';
+      case 'gemini': return 'Google AI Studio';
       case 'bazaarlink': return 'BazaarLink';
       case 'cometapi': return 'CometAPI';
       default: return provider;
@@ -201,13 +210,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'cometapi': return 'https://cometapi.com/';
       default: return '#';
     }
-  };
-
-  // ✅ التحقق إذا المزود الخارجي ليه مفتاح
-  const isExternalProviderReady = (provider: string) => {
-    if (provider === 'bazaarlink') return !!bazaarlinkKey.trim();
-    if (provider === 'cometapi') return !!cometapiKey.trim();
-    return false;
   };
 
   if (!isOpen) return null;
@@ -256,11 +258,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
           )}
 
-          {/* Model Selection - كل الموديلات في قائمة واحدة */}
+          {/* Model Selection */}
           <div className="space-y-3">
             <h3 className="font-bold text-gray-800 flex items-center gap-2">
               <Cpu size={18} />
-              اختر المزود / الموديل
+              اختر الموديل
             </h3>
             <div className="grid gap-3">
               {AVAILABLE_MODELS.map((model) => (
@@ -270,42 +272,28 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     setSelectedModel(model.id);
                     setUseCustomUrl(false);
                   }}
-                  className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-right relative ${
-                    selectedModel === model.id
+                  className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-right ${
+                    selectedModel === model.id && !useCustomUrl
                       ? 'border-primary-500 bg-primary-50'
                       : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
                 >
                   <div className={`w-12 h-12 rounded-xl ${model.color} flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-md`}>
-                    {model.provider === 'baseten' ? 'B' : 
-                     model.provider === 'openai' ? 'O' : 
-                     model.provider === 'gemini' ? 'G' :
-                     model.provider === 'bazaarlink' ? 'Bz' : 'Co'}
+                    {model.provider === 'baseten' ? 'B' : model.provider === 'openai' ? 'O' : 'G'}
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
                       <span className="font-bold text-gray-900">{model.nameAr}</span>
                       {model.badge && (
                         <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
                           {model.badge}
                         </span>
                       )}
-                      {/* ✅ مؤشر جاهزية المزود الخارجي */}
-                      {model.isExternal && isExternalProviderReady(model.provider) && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                          ✅ جاهز
-                        </span>
-                      )}
-                      {model.isExternal && !isExternalProviderReady(model.provider) && (
-                        <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
-                          ❌ أضف المفتاح
-                        </span>
-                      )}
                     </div>
                     <div className="text-sm text-gray-500">{model.name}</div>
                     <div className="text-xs text-gray-400 mt-1">{model.description}</div>
                   </div>
-                  {selectedModel === model.id && (
+                  {selectedModel === model.id && !useCustomUrl && (
                     <div className="w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-sm">
                       ✓
                     </div>
@@ -315,155 +303,159 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
-          {/* Custom Base URL Option (للمزودات العادية بس) */}
-          {!selectedModelConfig?.isExternal && (
-            <div className="space-y-3">
-              <label className="flex items-center gap-2 cursor-pointer">
+          {/* Custom Base URL Option */}
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useCustomUrl}
+                onChange={(e) => setUseCustomUrl(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="font-medium text-gray-700">استخدام رابط مخصص (Custom Base URL)</span>
+            </label>
+
+            {useCustomUrl && (
+              <div className="space-y-2">
                 <input
-                  type="checkbox"
-                  checked={useCustomUrl}
-                  onChange={(e) => setUseCustomUrl(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <span className="font-medium text-gray-700">استخدام رابط مخصص (Custom Base URL)</span>
-              </label>
-
-              {useCustomUrl && (
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={customBaseUrl}
-                    onChange={(e) => setCustomBaseUrl(e.target.value)}
-                    placeholder="https://inference.baseten.co/v1"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
-                    dir="ltr"
-                  />
-                  <p className="text-xs text-gray-500">للاستخدام مع أي مزود OpenAI-compatible</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* API Key Input للمزود العادي */}
-          {!selectedModelConfig?.isExternal && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Key size={18} className="text-gray-600" />
-                <h3 className="font-bold text-gray-800">مفتاح API</h3>
-                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                  {getProviderLabel(selectedModelConfig?.provider || 'baseten')}
-                </span>
-              </div>
-
-              <div className="relative">
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={
-                    selectedModelConfig?.provider === 'baseten' ? 'baseten-api-key-xxx' : 
-                    selectedModelConfig?.provider === 'openai' ? 'sk-xxxxxxxxxxxxxxxx' : 
-                    'AIzaSyxxxxxxxxxxxxxxxx'
-                  }
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
+                  type="text"
+                  value={customBaseUrl}
+                  onChange={(e) => setCustomBaseUrl(e.target.value)}
+                  placeholder="https://inference.baseten.co/v1"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
                   dir="ltr"
                 />
-                <button
-                  onClick={() => setShowKey(!showKey)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                >
-                  {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                <p className="text-xs text-gray-500">للاستخدام مع أي مزود OpenAI-compatible</p>
               </div>
+            )}
+          </div>
 
-              {selectedModelConfig && (
-                <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 space-y-1">
-                  <p><strong>المزود:</strong> {getProviderLabel(selectedModelConfig.provider)}</p>
-                  <p><strong>الرابط:</strong> <code className="bg-gray-200 px-1 rounded">{useCustomUrl && customBaseUrl ? customBaseUrl : selectedModelConfig.baseUrl}</code></p>
-                  <p><strong>الموديل:</strong> <code className="bg-gray-200 px-1 rounded">{selectedModelConfig.id}</code></p>
-                </div>
-              )}
-
-              <p className="text-xs text-gray-500">
-                احصل على المفتاح من:{" "}
-                <a 
-                  href={getProviderLink(selectedModelConfig?.provider || 'baseten')} 
-                  target="_blank" 
-                  className="text-primary-600 hover:underline font-medium" 
-                  rel="noreferrer"
-                >
-                  {getProviderLink(selectedModelConfig?.provider || 'baseten').replace('https://', '')}
-                </a>
-              </p>
+          {/* API Key Input */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Key size={18} className="text-gray-600" />
+              <h3 className="font-bold text-gray-800">مفتاح API</h3>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                {getProviderLabel(selectedModelConfig?.provider || 'baseten')}
+              </span>
             </div>
-          )}
 
-          {/* ✅ مفاتيح المزودين الخارجيين */}
+            <div className="relative">
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={
+                  selectedModelConfig?.provider === 'baseten' ? 'baseten-api-key-xxx' : 
+                  selectedModelConfig?.provider === 'openai' ? 'sk-xxxxxxxxxxxxxxxx' : 
+                  'AIzaSyxxxxxxxxxxxxxxxx'
+                }
+                className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
+                dir="ltr"
+              />
+              <button
+                onClick={() => setShowKey(!showKey)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+              >
+                {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            {/* Model Info */}
+            {selectedModelConfig && (
+              <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 space-y-1">
+                <p><strong>المزود:</strong> {getProviderLabel(selectedModelConfig.provider)}</p>
+                <p><strong>الرابط:</strong> <code className="bg-gray-200 px-1 rounded">{useCustomUrl && customBaseUrl ? customBaseUrl : selectedModelConfig.baseUrl}</code></p>
+                <p><strong>الموديل:</strong> <code className="bg-gray-200 px-1 rounded">{selectedModelConfig.id}</code></p>
+              </div>
+            )}
+
+            <p className="text-xs text-gray-500">
+              احصل على المفتاح من:{" "}
+              <a 
+                href={getProviderLink(selectedModelConfig?.provider || 'baseten')} 
+                target="_blank" 
+                className="text-primary-600 hover:underline font-medium" 
+                rel="noreferrer"
+              >
+                {getProviderLink(selectedModelConfig?.provider || 'baseten').replace('https://', '')}
+              </a>
+            </p>
+          </div>
+
+          {/* ✅ قسم المزودين الجداد */}
           <div className="space-y-4 border-t border-gray-200 pt-6">
             <h3 className="font-bold text-gray-800 flex items-center gap-2">
               <Zap size={18} />
-              مفاتيح المزودين الإضافيين
+              مزودين إضافيين
             </h3>
-            
-            {/* BazaarLink */}
-            <div className="space-y-3 p-4 bg-gray-50 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-                  Bz
-                </div>
-                <div>
-                  <span className="font-bold text-gray-900">بازار لينك</span>
-                  <div className="text-xs text-gray-500">https://bazaarlink.ai/api/v1</div>
-                </div>
-              </div>
 
-              <div className="relative">
-                <input
-                  type={showBazaarlinkKey ? 'text' : 'password'}
-                  value={bazaarlinkKey}
-                  onChange={(e) => setBazaarlinkKey(e.target.value)}
-                  placeholder="مفتاح BazaarLink..."
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
-                  dir="ltr"
-                />
-                <button
-                  onClick={() => setShowBazaarlinkKey(!showBazaarlinkKey)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                >
-                  {showBazaarlinkKey ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
+            {NEW_PROVIDERS.map((provider) => {
+              const keyValue = provider.id === 'bazaarlink' ? bazaarlinkKey : cometapiKey;
+              const setKeyValue = provider.id === 'bazaarlink' ? setBazaarlinkKey : setCometapiKey;
+              const showKeyValue = provider.id === 'bazaarlink' ? showBazaarlinkKey : showCometapiKey;
+              const setShowKeyValue = provider.id === 'bazaarlink' ? setShowBazaarlinkKey : setShowCometapiKey;
+              const hasKey = !!keyValue.trim();
 
-            {/* CometAPI */}
-            <div className="space-y-3 p-4 bg-gray-50 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-                  Co
-                </div>
-                <div>
-                  <span className="font-bold text-gray-900">كوميت API</span>
-                  <div className="text-xs text-gray-500">https://api.cometapi.com/v1</div>
-                </div>
-              </div>
+              return (
+                <div key={provider.id} className={`p-4 rounded-xl border-2 transition-all ${hasKey ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white'}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`w-10 h-10 rounded-xl ${provider.color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
+                      {provider.id === 'bazaarlink' ? 'Bz' : 'Co'}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-900">{provider.nameAr}</span>
+                        {provider.badge && (
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                            {provider.badge}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500">{provider.name}</div>
+                    </div>
+                    {hasKey ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                        ✅ جاهز
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
+                        ❌ أضف المفتاح
+                      </span>
+                    )}
+                  </div>
 
-              <div className="relative">
-                <input
-                  type={showCometapiKey ? 'text' : 'password'}
-                  value={cometapiKey}
-                  onChange={(e) => setCometapiKey(e.target.value)}
-                  placeholder="مفتاح CometAPI..."
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
-                  dir="ltr"
-                />
-                <button
-                  onClick={() => setShowCometapiKey(!showCometapiKey)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                >
-                  {showCometapiKey ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
+                  <div className="relative">
+                    <input
+                      type={showKeyValue ? 'text' : 'password'}
+                      value={keyValue}
+                      onChange={(e) => setKeyValue(e.target.value)}
+                      placeholder={`مفتاح ${provider.nameAr}...`}
+                      className="w-full pl-12 pr-4 py-2.5 rounded-lg border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
+                      dir="ltr"
+                    />
+                    <button
+                      onClick={() => setShowKeyValue(!showKeyValue)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                    >
+                      {showKeyValue ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-gray-500 mt-2">
+                    احصل على المفتاح من:{" "}
+                    <a 
+                      href={getProviderLink(provider.id)} 
+                      target="_blank" 
+                      className="text-primary-600 hover:underline font-medium" 
+                      rel="noreferrer"
+                    >
+                      {getProviderLink(provider.id).replace('https://', '')}
+                    </a>
+                  </p>
+                </div>
+              );
+            })}
           </div>
 
           {/* Info Box */}
@@ -471,7 +463,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             <Info className="text-blue-600 flex-shrink-0 mt-0.5" size={18} />
             <div className="text-sm text-blue-800">
               <p className="font-semibold mb-1">🔒 الخصوصية والأمان</p>
-              <p>المفاتيح تُحفظ في متصفحك فقط (LocalStorage) ولا تُرفع على أي خادم.</p>
+              <p>المفاتيح تُحفظ في متصفحك فقط (LocalStorage) ولا تُرفع على أي خادم. يتم إرسالها مباشرة للـ API من Backend.</p>
             </div>
           </div>
         </div>
