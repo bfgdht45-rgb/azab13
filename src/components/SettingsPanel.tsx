@@ -155,8 +155,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setActiveConfig(info);
   }, []);
 
+  // ✅ تم التصليح هنا — أضفت const savedModel
   const getActiveConfig = () => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
+    const savedModel = localStorage.getItem('mathsolver_model') || '';
     const hasBazaarlink = !!(localStorage.getItem('mathsolver_bazaarlink_key') || '').trim();
     const hasCometapi = !!(localStorage.getItem('mathsolver_cometapi_key') || '').trim();
     const hasCerebras = !!(localStorage.getItem('mathsolver_cerebras_key') || '').trim();
