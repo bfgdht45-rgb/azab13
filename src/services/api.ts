@@ -62,11 +62,25 @@ const COMETAPI_CONFIG: ProviderConfig = {
   badge: 'جديد',
 };
 
+// ✅ نوع الإعدادات المخزنة (أضفنا bazaarlinkModel و cometapiModel)
+interface StoredConfig {
+  apiKey: string;
+  model: string;
+  provider: string;
+  baseUrl: string;
+  customUrl: string;
+  useCustom: boolean;
+  bazaarlinkKey: string;
+  cometapiKey: string;
+  bazaarlinkModel: string;
+  cometapiModel: string;
+}
+
 // =====================================
 // Get stored config (القديم + الجديد)
 // =====================================
 
-function getStoredConfig() {
+function getStoredConfig(): StoredConfig {
   return {
     apiKey: localStorage.getItem('mathsolver_api_key') || '',
     model: localStorage.getItem('mathsolver_model') || 'deepseek-ai/DeepSeek-V4-Pro',
@@ -78,6 +92,10 @@ function getStoredConfig() {
     // ✅ المفاتيح الجديدة
     bazaarlinkKey: localStorage.getItem('mathsolver_bazaarlink_key') || '',
     cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
+    
+    // ✅ النماذج الجديدة
+    bazaarlinkModel: localStorage.getItem('mathsolver_bazaarlink_model') || '',
+    cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
   };
 }
 
