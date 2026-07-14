@@ -89,34 +89,34 @@ const AVAILABLE_MODELS: ModelConfig[] = [
 
 const NEW_PROVIDERS: NewProviderConfig[] = [
   {
-    id: 'bazaarlink',
-    name: 'BazaarLink',
-    nameAr: 'بازار لينك',
-    keyStorage: 'mathsolver_bazaarlink_key',
-    modelStorage: 'mathsolver_bazaarlink_model',
-    baseUrl: 'https://bazaarlink.ai/api/v1',
-    color: 'bg-gradient-to-br from-pink-500 to-rose-600',
+    id: 'groq',
+    name: 'Groq',
+    nameAr: 'جروك',
+    keyStorage: 'mathsolver_groq_key',
+    modelStorage: 'mathsolver_groq_model',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    color: 'bg-gradient-to-br from-red-500 to-pink-600',
+    badge: 'سريع',
+  },
+  {
+    id: 'nvidia',
+    name: 'NVIDIA',
+    nameAr: 'إنفيديا',
+    keyStorage: 'mathsolver_nvidia_key',
+    modelStorage: 'mathsolver_nvidia_model',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    color: 'bg-gradient-to-br from-green-500 to-lime-600',
     badge: 'جديد',
   },
   {
-    id: 'cometapi',
-    name: 'CometAPI',
-    nameAr: 'كوميت API',
-    keyStorage: 'mathsolver_cometapi_key',
-    modelStorage: 'mathsolver_cometapi_model',
-    baseUrl: 'https://api.cometapi.com/v1',
-    color: 'bg-gradient-to-br from-cyan-500 to-blue-600',
+    id: 'mistral',
+    name: 'Mistral AI',
+    nameAr: 'ميسترال AI',
+    keyStorage: 'mathsolver_mistral_key',
+    modelStorage: 'mathsolver_mistral_model',
+    baseUrl: 'https://api.mistral.ai/v1',
+    color: 'bg-gradient-to-br from-orange-400 to-amber-500',
     badge: 'جديد',
-  },
-  {
-    id: 'cerebras',
-    name: 'Cerebras',
-    nameAr: 'سيريبراس',
-    keyStorage: 'mathsolver_cerebras_key',
-    modelStorage: 'mathsolver_cerebras_model',
-    baseUrl: 'https://api.cerebras.ai/v1',
-    color: 'bg-gradient-to-br from-yellow-500 to-orange-600',
-    badge: 'مجاني',
   },
 ];
 
@@ -129,12 +129,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [saved, setSaved] = useState(false);
   const [activeConfig, setActiveConfig] = useState<{model: string; hasKey: boolean}>({model: '', hasKey: false});
 
-  const [bazaarlinkKey, setBazaarlinkKey] = useState('');
-  const [cometapiKey, setCometapiKey] = useState('');
-  const [cerebrasKey, setCerebrasKey] = useState('');
-  const [showBazaarlinkKey, setShowBazaarlinkKey] = useState(false);
-  const [showCometapiKey, setShowCometapiKey] = useState(false);
-  const [showCerebrasKey, setShowCerebrasKey] = useState(false);
+  // New provider keys
+  const [groqKey, setGroqKey] = useState('');
+  const [nvidiaKey, setNvidiaKey] = useState('');
+  const [mistralKey, setMistralKey] = useState('');
+  const [showGroqKey, setShowGroqKey] = useState(false);
+  const [showNvidiaKey, setShowNvidiaKey] = useState(false);
+  const [showMistralKey, setShowMistralKey] = useState(false);
 
   useEffect(() => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
@@ -147,24 +148,23 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setCustomBaseUrl(savedCustomUrl);
     setUseCustomUrl(savedUseCustom);
 
-    setBazaarlinkKey(localStorage.getItem('mathsolver_bazaarlink_key') || '');
-    setCometapiKey(localStorage.getItem('mathsolver_cometapi_key') || '');
-    setCerebrasKey(localStorage.getItem('mathsolver_cerebras_key') || '');
+    setGroqKey(localStorage.getItem('mathsolver_groq_key') || '');
+    setNvidiaKey(localStorage.getItem('mathsolver_nvidia_key') || '');
+    setMistralKey(localStorage.getItem('mathsolver_mistral_key') || '');
 
     const info = getActiveConfig();
     setActiveConfig(info);
   }, []);
 
-  // ✅ تم التصليح هنا — أضفت const savedModel
   const getActiveConfig = () => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
     const savedModel = localStorage.getItem('mathsolver_model') || '';
-    const hasBazaarlink = !!(localStorage.getItem('mathsolver_bazaarlink_key') || '').trim();
-    const hasCometapi = !!(localStorage.getItem('mathsolver_cometapi_key') || '').trim();
-    const hasCerebras = !!(localStorage.getItem('mathsolver_cerebras_key') || '').trim();
+    const hasGroq = !!(localStorage.getItem('mathsolver_groq_key') || '').trim();
+    const hasNvidia = !!(localStorage.getItem('mathsolver_nvidia_key') || '').trim();
+    const hasMistral = !!(localStorage.getItem('mathsolver_mistral_key') || '').trim();
     return { 
       model: savedModel, 
-      hasKey: !!savedKey.trim() || hasBazaarlink || hasCometapi || hasCerebras 
+      hasKey: !!savedKey.trim() || hasGroq || hasNvidia || hasMistral 
     };
   };
 
@@ -174,9 +174,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     localStorage.setItem('mathsolver_custom_url', customBaseUrl);
     localStorage.setItem('mathsolver_use_custom', useCustomUrl.toString());
 
-    localStorage.setItem('mathsolver_bazaarlink_key', bazaarlinkKey);
-    localStorage.setItem('mathsolver_cometapi_key', cometapiKey);
-    localStorage.setItem('mathsolver_cerebras_key', cerebrasKey);
+    localStorage.setItem('mathsolver_groq_key', groqKey);
+    localStorage.setItem('mathsolver_nvidia_key', nvidiaKey);
+    localStorage.setItem('mathsolver_mistral_key', mistralKey);
 
     const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
     if (model) {
@@ -184,17 +184,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       localStorage.setItem('mathsolver_base_url', useCustomUrl && customBaseUrl ? customBaseUrl : model.baseUrl);
     }
 
-    if (bazaarlinkKey.trim() && !cometapiKey.trim() && !cerebrasKey.trim()) {
-      localStorage.setItem('mathsolver_provider', 'bazaarlink');
-    } else if (cometapiKey.trim() && !bazaarlinkKey.trim() && !cerebrasKey.trim()) {
-      localStorage.setItem('mathsolver_provider', 'cometapi');
-    } else if (cerebrasKey.trim() && !bazaarlinkKey.trim() && !cometapiKey.trim()) {
-      localStorage.setItem('mathsolver_provider', 'cerebras');
+    if (groqKey.trim() && !nvidiaKey.trim() && !mistralKey.trim()) {
+      localStorage.setItem('mathsolver_provider', 'groq');
+    } else if (nvidiaKey.trim() && !groqKey.trim() && !mistralKey.trim()) {
+      localStorage.setItem('mathsolver_provider', 'nvidia');
+    } else if (mistralKey.trim() && !groqKey.trim() && !nvidiaKey.trim()) {
+      localStorage.setItem('mathsolver_provider', 'mistral');
     }
 
     setActiveConfig({ 
       model: selectedModel, 
-      hasKey: !!apiKey.trim() || !!bazaarlinkKey.trim() || !!cometapiKey.trim() || !!cerebrasKey.trim() 
+      hasKey: !!apiKey.trim() || !!groqKey.trim() || !!nvidiaKey.trim() || !!mistralKey.trim() 
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -207,9 +207,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'baseten': return 'Baseten Inference';
       case 'openai': return 'OpenAI';
       case 'gemini': return 'Google AI Studio';
-      case 'bazaarlink': return 'BazaarLink';
-      case 'cometapi': return 'CometAPI';
-      case 'cerebras': return 'Cerebras';
+      case 'groq': return 'Groq';
+      case 'nvidia': return 'NVIDIA';
+      case 'mistral': return 'Mistral AI';
       default: return provider;
     }
   };
@@ -219,9 +219,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'baseten': return 'https://www.baseten.co/';
       case 'openai': return 'https://platform.openai.com/api-keys';
       case 'gemini': return 'https://aistudio.google.com/app/apikey';
-      case 'bazaarlink': return 'https://bazaarlink.ai/';
-      case 'cometapi': return 'https://cometapi.com/';
-      case 'cerebras': return 'https://cloud.cerebras.ai/';
+      case 'groq': return 'https://console.groq.com/keys';
+      case 'nvidia': return 'https://build.nvidia.com/explore/discover';
+      case 'mistral': return 'https://console.mistral.ai/api-keys/';
       default: return '#';
     }
   };
@@ -399,28 +399,28 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
             {NEW_PROVIDERS.map((provider) => {
               const keyValue = 
-                provider.id === 'bazaarlink' ? bazaarlinkKey : 
-                provider.id === 'cometapi' ? cometapiKey : 
-                cerebrasKey;
+                provider.id === 'groq' ? groqKey : 
+                provider.id === 'nvidia' ? nvidiaKey : 
+                mistralKey;
               const setKeyValue = 
-                provider.id === 'bazaarlink' ? setBazaarlinkKey : 
-                provider.id === 'cometapi' ? setCometapiKey : 
-                setCerebrasKey;
+                provider.id === 'groq' ? setGroqKey : 
+                provider.id === 'nvidia' ? setNvidiaKey : 
+                setMistralKey;
               const showKeyValue = 
-                provider.id === 'bazaarlink' ? showBazaarlinkKey : 
-                provider.id === 'cometapi' ? showCometapiKey : 
-                showCerebrasKey;
+                provider.id === 'groq' ? showGroqKey : 
+                provider.id === 'nvidia' ? showNvidiaKey : 
+                showMistralKey;
               const setShowKeyValue = 
-                provider.id === 'bazaarlink' ? setShowBazaarlinkKey : 
-                provider.id === 'cometapi' ? setShowCometapiKey : 
-                setShowCerebrasKey;
+                provider.id === 'groq' ? setShowGroqKey : 
+                provider.id === 'nvidia' ? setShowNvidiaKey : 
+                setShowMistralKey;
               const hasKey = !!keyValue.trim();
 
               return (
                 <div key={provider.id} className={`p-4 rounded-xl border-2 transition-all ${hasKey ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white'}`}>
                   <div className="flex items-center gap-3 mb-3">
                     <div className={`w-10 h-10 rounded-xl ${provider.color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
-                      {provider.id === 'bazaarlink' ? 'Bz' : provider.id === 'cometapi' ? 'Co' : 'Ce'}
+                      {provider.id === 'groq' ? 'Gq' : provider.id === 'nvidia' ? 'Nv' : 'Ms'}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
