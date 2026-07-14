@@ -27,6 +27,9 @@ const NVIDIA_CONFIG: ProviderConfig = {
   apiKey: '',
   models: [],
   preferredModels: [
+    'z-ai/glm-5.2',
+    'z-ai/glm-5.1',
+    'z-ai/glm-5',
     'nvidia/llama-3.1-nemotron-70b-instruct',
     'nvidia/llama-3.1-nemotron-51b-instruct',
     'nvidia/llama-3.3-nemotron-super-49b-v1',
@@ -261,7 +264,7 @@ export const mathSolverAPI = {
       else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
         const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
         const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.nvidiaKey, model, NVIDIA_CONFIG.baseUrl, prompt);
+        result = await callNvidiaDirect(cfg.nvidiaKey, model, prompt);
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
         const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
@@ -335,7 +338,6 @@ export const mathSolverAPI = {
       let confidence = 0.95;
 
       if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
-        // Cerebras: multimodal not enabled for most accounts
         try {
           const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
           const model = cfg.cerebrasModel || selectBestModel(models, CEREBRAS_CONFIG.preferredModels);
@@ -354,8 +356,10 @@ export const mathSolverAPI = {
         }
       }
       else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
-        // NVIDIA: use ai.api.nvidia.com endpoint with <img> tag format
-        extractedText = await callNvidiaVision(cfg.nvidiaKey, base64Image, mimeType);
+        // NVIDIA with z-ai/glm-5.2 for vision
+        const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
+        const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
+        extractedText = await callNvidiaVision(cfg.nvidiaKey, model, base64Image, mimeType);
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
         const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
@@ -507,6 +511,78 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
   }
 }
 
+// ✅ NVIDIA Direct - uses standard OpenAI-compatible format
+async function callNvidiaDirect(apiKey: string, model: string, prompt: string) {
+  const response = await fetch(`${NVIDIA_CONFIG.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.2,
+      max_tokens: 4000,
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`NVIDIA API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  try {
+    return JSON.parse(content);
+  } catch {
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/```\s*([\s\S]*?)```/);
+    if (jsonMatch) return JSON.parse(jsonMatch[1]);
+    const objMatch = content.match(/\{[\s\S]*\}/);
+    if (objMatch) return JSON.parse(objMatch[0]);
+    throw new Error('Could not parse JSON response');
+  }
+}
+
+// ✅ NVIDIA Vision - uses standard OpenAI-compatible image_url format
+async function callNvidiaVision(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
+  const response = await fetch(`${NVIDIA_CONFIG.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
+        { role: 'user', content: [
+          { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
+        ]},
+      ],
+      temperature: 0.1,
+      max_tokens: 2000,
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`NVIDIA Vision API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
 async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string): Promise<string> {
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -531,43 +607,6 @@ async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl
     const errorText = await response.text();
     throw new Error(`Vision API error: ${response.status} - ${errorText}`);
   }
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content?.trim() || '';
-}
-
-// ✅ NVIDIA Vision - uses ai.api.nvidia.com with <img> tag format
-async function callNvidiaVision(apiKey: string, base64Image: string, mimeType: string): Promise<string> {
-  // NVIDIA vision models use ai.api.nvidia.com endpoint with <img> tag in content
-  const visionModel = 'meta/llama-3.2-90b-vision-instruct';
-  const invokeUrl = `https://ai.api.nvidia.com/v1/gr/${visionModel}/chat/completions`;
-
-  const response = await fetch(invokeUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify({
-      model: visionModel,
-      messages: [
-        {
-          role: 'user',
-          content: `Extract the mathematical equation from this image as pure LaTeX. No \text{} or \mbox{}. <img src="data:${mimeType};base64,${base64Image}" />`
-        }
-      ],
-      max_tokens: 1024,
-      temperature: 0.1,
-      top_p: 1.0,
-      stream: false,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`NVIDIA Vision API error: ${response.status} - ${errorText}`);
-  }
-
   const data = await response.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
