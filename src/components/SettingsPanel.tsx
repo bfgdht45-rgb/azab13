@@ -108,6 +108,7 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     color: 'bg-gradient-to-br from-pink-500 to-rose-600',
     badge: 'جديد',
   },
+
   {
     id: 'cometapi',
     name: 'CometAPI',
@@ -141,10 +142,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   // New provider keys
   const [cerebrasKey, setCerebrasKey] = useState('');
-  const [morphllmKey, setMorphllmKey] = useState('');
   const [cometapiKey, setCometapiKey] = useState('');
   const [mistralKey, setMistralKey] = useState('');
   const [showCerebrasKey, setShowCerebrasKey] = useState(false);
+  const [morphllmKey, setMorphllmKey] = useState('');
   const [showMorphllmKey, setShowMorphllmKey] = useState(false);
   const [showCometapiKey, setShowCometapiKey] = useState(false);
   const [showMistralKey, setShowMistralKey] = useState(false);
