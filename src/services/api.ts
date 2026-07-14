@@ -92,7 +92,8 @@ const MISTRAL_CONFIG: ProviderConfig = {
     'mistral-medium-latest',
     'mistral-small-latest',
     'codestral-latest',
-    'pixtral-large-latest',
+    'pixtral-12b-2409',
+    'pixtral-large-2411',
     'ministral-8b-latest',
     'ministral-3b-latest',
     'open-mistral-nemo',
@@ -333,27 +334,17 @@ export const mathSolverAPI = {
       let extractedText = '';
       let confidence = 0.95;
 
-      // ⚠️ NVIDIA does NOT support vision/images - fallback to text-based OCR using a vision-capable provider
-      if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
-        // NVIDIA NIM models don't support image_url in messages
-        // Fallback: try to use another available provider for vision, or return error
-        return {
-          success: false,
-          latex: '',
-          confidence: 0,
-          rawText: '',
-          error: 'NVIDIA NIM لا يدعم رفع الصور مباشرة. جرب مزود آخر (Gemini, OpenAI, Mistral, CometAPI) للتعرف على الصور.',
-        };
+      if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
+        // Cerebras supports vision via OpenAI-compatible API
+        const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
+        const model = cfg.cerebrasModel || selectBestModel(models, CEREBRAS_CONFIG.preferredModels);
+        extractedText = await callOpenAIVisionCompatible(cfg.cerebrasKey, model, CEREBRAS_CONFIG.baseUrl, base64Image, mimeType);
       }
-      else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
-        // Cerebras also doesn't support vision
-        return {
-          success: false,
-          latex: '',
-          confidence: 0,
-          rawText: '',
-          error: 'Cerebras لا يدعم رفع الصور مباشرة. جرب مزود آخر (Gemini, OpenAI, Mistral, CometAPI) للتعرف على الصور.',
-        };
+      else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
+        // NVIDIA supports vision via OpenAI-compatible API (phi-4-multimodal, etc.)
+        const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
+        const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
+        extractedText = await callOpenAIVisionCompatible(cfg.nvidiaKey, model, NVIDIA_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
         const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
@@ -361,11 +352,17 @@ export const mathSolverAPI = {
         extractedText = await callOpenAIVisionCompatible(cfg.cometapiKey, model, COMETAPI_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'mistral' && cfg.mistralKey) {
+        // Mistral: use actual vision models (pixtral-12b-2409 or pixtral-large-2411)
         const models = await fetchAvailableModels(MISTRAL_CONFIG.baseUrl, cfg.mistralKey);
-        const model = cfg.mistralModel || selectBestModel(models, MISTRAL_CONFIG.preferredModels);
-        // Mistral pixtral supports vision
-        const visionModel = model.includes('pixtral') ? model : 'pixtral-large-latest';
-        extractedText = await callOpenAIVisionCompatible(cfg.mistralKey, visionModel, MISTRAL_CONFIG.baseUrl, base64Image, mimeType);
+        // Filter for vision-capable models
+        const visionModels = models.filter((m: string) => 
+          m.includes('pixtral') || m.includes('vision')
+        );
+        const preferredVision = MISTRAL_CONFIG.preferredModels.filter(m => 
+          m.includes('pixtral') || m.includes('vision')
+        );
+        const model = cfg.mistralModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
+        extractedText = await callOpenAIVisionCompatible(cfg.mistralKey, model, MISTRAL_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'gemini' || cfg.model.includes('gemini')) {
         extractedText = await callGeminiVision(cfg.apiKey, cfg.model, base64Image, mimeType);
