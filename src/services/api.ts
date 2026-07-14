@@ -12,6 +12,9 @@ const CEREBRAS_CONFIG: ProviderConfig = {
   apiKey: '',
   models: [],
   preferredModels: [
+    'gemma-4-31b',
+    'gpt-oss-120b',
+    'zai-glm-4.7',
     'llama-3.3-70b',
     'llama3.1-8b',
   ],
@@ -356,7 +359,6 @@ export const mathSolverAPI = {
         }
       }
       else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
-        // NVIDIA with z-ai/glm-5.2 for vision
         const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
         const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
         extractedText = await callNvidiaVision(cfg.nvidiaKey, model, base64Image, mimeType);
