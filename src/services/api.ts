@@ -4,26 +4,19 @@ import type { SolverRequest, SolverResponse, OCRResult, ProviderConfig } from '.
 // ✅ إعدادات المزودين
 // =====================================
 
-const GROQ_CONFIG: ProviderConfig = {
-  id: 'groq',
-  name: 'Groq',
-  nameAr: 'جروك',
-  baseUrl: 'https://api.groq.com/openai/v1',
+const CEREBRAS_CONFIG: ProviderConfig = {
+  id: 'cerebras',
+  name: 'Cerebras',
+  nameAr: 'سيريبراس',
+  baseUrl: 'https://api.cerebras.ai/v1',
   apiKey: '',
   models: [],
   preferredModels: [
-    'llama-4-scout-17b-16e-instruct',
-    'llama-4-maverick-17b-128e-instruct',
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'mixtral-8x7b-32768',
-    'gemma2-9b-it',
-    'deepseek-r1-distill-llama-70b',
-    'deepseek-r1-distill-qwen-32b',
-    'qwen-qwq-32b',
+    'llama-3.3-70b',
+    'llama3.1-8b',
   ],
-  color: 'bg-gradient-to-br from-red-500 to-pink-600',
-  badge: 'سريع',
+  color: 'bg-gradient-to-br from-yellow-500 to-orange-600',
+  badge: 'مجاني',
 };
 
 const NVIDIA_CONFIG: ProviderConfig = {
@@ -51,6 +44,39 @@ const NVIDIA_CONFIG: ProviderConfig = {
     'microsoft/phi-4-multimodal-instruct',
   ],
   color: 'bg-gradient-to-br from-green-500 to-lime-600',
+  badge: 'جديد',
+};
+
+const COMETAPI_CONFIG: ProviderConfig = {
+  id: 'cometapi',
+  name: 'CometAPI',
+  nameAr: 'كوميت API',
+  baseUrl: 'https://api.cometapi.com/v1',
+  apiKey: '',
+  models: [],
+  preferredModels: [
+    'gpt-5.6', 'gpt-5.5-pro', 'gpt-5.5', 'gpt-5.4-pro', 'gpt-5.4',
+    'gpt-5.3-chat-latest', 'gpt-5.2-pro', 'gpt-5.2', 'gpt-5.1',
+    'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini',
+    'gpt-4o', 'gpt-4o-mini',
+    'o4-mini', 'o3-pro', 'o3', 'o3-mini-high', 'o3-mini',
+    'o1-pro', 'o1', 'o1-mini',
+    'gemini-3.1-pro-preview', 'gemini-3-pro-preview', 'gemini-3-flash',
+    'gemini-3-flash-thinking', 'gemini-2.5-pro', 'gemini-2.5-pro-thinking',
+    'gemini-2.5-flash', 'gemini-2.5-flash-lite',
+    'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-sonnet-4-5',
+    'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-opus-4-5',
+    'deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v3.2',
+    'deepseek-v3.1', 'deepseek-v3', 'deepseek-chat', 'deepseek-r1',
+    'glm-5.2', 'glm-5.1', 'glm-5', 'glm-4.7', 'glm-4.6',
+    'qwen3.7-max', 'qwen3.7-plus', 'qwen3.6-plus', 'qwen3.5-plus',
+    'qwen3-max', 'qwen3-coder',
+    'kimi-k2.7-code', 'kimi-k2.6', 'kimi-k2.5',
+    'grok-4.5', 'grok-4.3', 'grok-4',
+    'llama-4-maverick', 'llama-4-scout',
+    'doubao-seed-2-1-pro', 'doubao-seed-2-1-turbo',
+  ],
+  color: 'bg-gradient-to-br from-cyan-500 to-blue-600',
   badge: 'جديد',
 };
 
@@ -84,11 +110,13 @@ interface StoredConfig {
   baseUrl: string;
   customUrl: string;
   useCustom: boolean;
-  groqKey: string;
+  cerebrasKey: string;
   nvidiaKey: string;
+  cometapiKey: string;
   mistralKey: string;
-  groqModel: string;
+  cerebrasModel: string;
   nvidiaModel: string;
+  cometapiModel: string;
   mistralModel: string;
 }
 
@@ -105,12 +133,14 @@ function getStoredConfig(): StoredConfig {
     customUrl: localStorage.getItem('mathsolver_custom_url') || '',
     useCustom: localStorage.getItem('mathsolver_use_custom') === 'true',
 
-    groqKey: localStorage.getItem('mathsolver_groq_key') || '',
+    cerebrasKey: localStorage.getItem('mathsolver_cerebras_key') || '',
     nvidiaKey: localStorage.getItem('mathsolver_nvidia_key') || '',
+    cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
     mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
 
-    groqModel: localStorage.getItem('mathsolver_groq_model') || '',
+    cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
     nvidiaModel: localStorage.getItem('mathsolver_nvidia_model') || '',
+    cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
   };
 }
@@ -150,7 +180,7 @@ function selectBestModel(availableModels: string[], preferredModels: string[]): 
 export const mathSolverAPI = {
   hasApiKeys: (): boolean => {
     const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.groqKey || cfg.nvidiaKey || cfg.mistralKey);
+    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.nvidiaKey || cfg.cometapiKey || cfg.mistralKey);
   },
 
   getProviderInfo: () => {
@@ -160,35 +190,44 @@ export const mathSolverAPI = {
     let activeModel = modelName;
     let activeProvider = cfg.provider;
 
-    if (cfg.provider === 'groq' && cfg.groqKey) {
-      activeModel = cfg.groqModel || 'Groq Auto';
-      activeProvider = 'groq';
+    if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
+      activeModel = cfg.cerebrasModel || 'Cerebras Auto';
+      activeProvider = 'cerebras';
     } else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
       activeModel = cfg.nvidiaModel || 'NVIDIA Auto';
       activeProvider = 'nvidia';
+    } else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
+      activeModel = cfg.cometapiModel || 'CometAPI Auto';
+      activeProvider = 'cometapi';
     } else if (cfg.provider === 'mistral' && cfg.mistralKey) {
       activeModel = cfg.mistralModel || 'Mistral Auto';
       activeProvider = 'mistral';
     }
 
     return {
-      hasKeys: !!(cfg.apiKey || cfg.groqKey || cfg.nvidiaKey || cfg.mistralKey),
+      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.nvidiaKey || cfg.cometapiKey || cfg.mistralKey),
       provider: activeProvider,
       model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
     };
   },
 
-  fetchGroqModels: async (): Promise<string[]> => {
+  fetchCerebrasModels: async (): Promise<string[]> => {
     const cfg = getStoredConfig();
-    if (!cfg.groqKey) return [];
-    return fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
+    if (!cfg.cerebrasKey) return [];
+    return fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
   },
 
   fetchNvidiaModels: async (): Promise<string[]> => {
     const cfg = getStoredConfig();
     if (!cfg.nvidiaKey) return [];
     return fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
+  },
+
+  fetchCometapiModels: async (): Promise<string[]> => {
+    const cfg = getStoredConfig();
+    if (!cfg.cometapiKey) return [];
+    return fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
   },
 
   fetchMistralModels: async (): Promise<string[]> => {
@@ -201,7 +240,7 @@ export const mathSolverAPI = {
     const startTime = Date.now();
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.groqKey && !cfg.nvidiaKey && !cfg.mistralKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.nvidiaKey && !cfg.cometapiKey && !cfg.mistralKey) {
       return {
         success: false,
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح.',
@@ -213,15 +252,20 @@ export const mathSolverAPI = {
       const prompt = buildPrompt(request.problem, request.subject, request.language, request.detailLevel);
       let result;
 
-      if (cfg.provider === 'groq' && cfg.groqKey) {
-        const models = await fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
-        const model = cfg.groqModel || selectBestModel(models, GROQ_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.groqKey, model, GROQ_CONFIG.baseUrl, prompt);
+      if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
+        const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
+        const model = cfg.cerebrasModel || selectBestModel(models, CEREBRAS_CONFIG.preferredModels);
+        result = await callOpenAICompatible(cfg.cerebrasKey, model, CEREBRAS_CONFIG.baseUrl, prompt);
       }
       else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
         const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
         const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
         result = await callOpenAICompatible(cfg.nvidiaKey, model, NVIDIA_CONFIG.baseUrl, prompt);
+      }
+      else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
+        const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
+        const model = cfg.cometapiModel || selectBestModel(models, COMETAPI_CONFIG.preferredModels);
+        result = await callOpenAICompatible(cfg.cometapiKey, model, COMETAPI_CONFIG.baseUrl, prompt);
       }
       else if (cfg.provider === 'mistral' && cfg.mistralKey) {
         const models = await fetchAvailableModels(MISTRAL_CONFIG.baseUrl, cfg.mistralKey);
@@ -273,7 +317,7 @@ export const mathSolverAPI = {
   processImage: async (imageFile: File): Promise<OCRResult> => {
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.groqKey && !cfg.nvidiaKey && !cfg.mistralKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.nvidiaKey && !cfg.cometapiKey && !cfg.mistralKey) {
       return {
         success: false,
         latex: '',
@@ -289,20 +333,39 @@ export const mathSolverAPI = {
       let extractedText = '';
       let confidence = 0.95;
 
-      if (cfg.provider === 'groq' && cfg.groqKey) {
-        const models = await fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
-        const model = cfg.groqModel || selectBestModel(models, GROQ_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.groqKey, model, GROQ_CONFIG.baseUrl, base64Image, mimeType);
+      // ⚠️ NVIDIA does NOT support vision/images - fallback to text-based OCR using a vision-capable provider
+      if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
+        // NVIDIA NIM models don't support image_url in messages
+        // Fallback: try to use another available provider for vision, or return error
+        return {
+          success: false,
+          latex: '',
+          confidence: 0,
+          rawText: '',
+          error: 'NVIDIA NIM لا يدعم رفع الصور مباشرة. جرب مزود آخر (Gemini, OpenAI, Mistral, CometAPI) للتعرف على الصور.',
+        };
       }
-      else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
-        const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
-        const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.nvidiaKey, model, NVIDIA_CONFIG.baseUrl, base64Image, mimeType);
+      else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
+        // Cerebras also doesn't support vision
+        return {
+          success: false,
+          latex: '',
+          confidence: 0,
+          rawText: '',
+          error: 'Cerebras لا يدعم رفع الصور مباشرة. جرب مزود آخر (Gemini, OpenAI, Mistral, CometAPI) للتعرف على الصور.',
+        };
+      }
+      else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
+        const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
+        const model = cfg.cometapiModel || selectBestModel(models, COMETAPI_CONFIG.preferredModels);
+        extractedText = await callOpenAIVisionCompatible(cfg.cometapiKey, model, COMETAPI_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'mistral' && cfg.mistralKey) {
         const models = await fetchAvailableModels(MISTRAL_CONFIG.baseUrl, cfg.mistralKey);
         const model = cfg.mistralModel || selectBestModel(models, MISTRAL_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.mistralKey, model, MISTRAL_CONFIG.baseUrl, base64Image, mimeType);
+        // Mistral pixtral supports vision
+        const visionModel = model.includes('pixtral') ? model : 'pixtral-large-latest';
+        extractedText = await callOpenAIVisionCompatible(cfg.mistralKey, visionModel, MISTRAL_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'gemini' || cfg.model.includes('gemini')) {
         extractedText = await callGeminiVision(cfg.apiKey, cfg.model, base64Image, mimeType);
