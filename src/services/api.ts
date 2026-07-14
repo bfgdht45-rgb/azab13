@@ -136,12 +136,12 @@ function getStoredConfig(): StoredConfig {
     useCustom: localStorage.getItem('mathsolver_use_custom') === 'true',
 
     cerebrasKey: localStorage.getItem('mathsolver_cerebras_key') || '',
-    morphllmKey: localStorage.getItem('mathsolver_morphllm_key') || '',
+    morphllmKey: localStorage.getItem('mathsolver_nvidia_key') || '',
     cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
     mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
 
     cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
-    morphllmModel: localStorage.getItem('mathsolver_morphllm_model') || '',
+    morphllmModel: localStorage.getItem('mathsolver_nvidia_model') || '',
     cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
   };
@@ -173,6 +173,82 @@ function selectBestModel(availableModels: string[], preferredModels: string[]): 
     if (availableModels.includes(model)) return model;
   }
   return availableModels[0] || preferredModels[0] || 'gpt-4o';
+}
+
+// =====================================
+// Find any vision-capable provider for OCR (used when main provider doesn't support images)
+// =====================================
+
+async function extractTextWithAnyProvider(base64Image: string, mimeType: string): Promise<{ text: string; usedProvider: string } | null> {
+  // Priority: Gemini (free, best for OCR) -> OpenAI -> Baseten -> Mistral -> Cerebras -> CometAPI
+
+  const mainKey = localStorage.getItem('mathsolver_api_key') || '';
+  const mainModel = localStorage.getItem('mathsolver_model') || '';
+  const mainProvider = localStorage.getItem('mathsolver_provider') || '';
+
+  // Try main provider first if it's vision-capable
+  if (mainKey.trim()) {
+    // Gemini
+    if (mainModel.includes('gemini') || mainProvider === 'gemini') {
+      try {
+        const text = await callGeminiVision(mainKey, mainModel || 'gemini-2.5-flash', base64Image, mimeType);
+        return { text, usedProvider: 'Gemini' };
+      } catch { /* ignore, try next */ }
+    }
+    // OpenAI with vision
+    if (mainModel.includes('gpt-4o') || mainModel.includes('gpt-4') || mainProvider === 'openai') {
+      try {
+        const text = await callOpenAIVision(mainKey, mainModel || 'gpt-4o', base64Image, mimeType);
+        return { text, usedProvider: 'OpenAI' };
+      } catch { /* ignore, try next */ }
+    }
+    // Baseten (some models support vision)
+    if (mainProvider === 'baseten') {
+      try {
+        const baseUrl = localStorage.getItem('mathsolver_base_url') || 'https://inference.baseten.co/v1';
+        const text = await callBasetenVision(mainKey, mainModel, baseUrl, base64Image, mimeType);
+        return { text, usedProvider: 'Baseten' };
+      } catch { /* ignore, try next */ }
+    }
+  }
+
+  // Try additional providers
+  const cerebrasKey = localStorage.getItem('mathsolver_cerebras_key') || '';
+  const cerebrasModel = localStorage.getItem('mathsolver_cerebras_model') || '';
+  if (cerebrasKey.trim()) {
+    try {
+      const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cerebrasKey);
+      const model = cerebrasModel || selectBestModel(models, CEREBRAS_CONFIG.preferredModels);
+      const text = await callOpenAIVisionCompatible(cerebrasKey, model, CEREBRAS_CONFIG.baseUrl, base64Image, mimeType);
+      return { text, usedProvider: 'Cerebras' };
+    } catch { /* ignore, try next */ }
+  }
+
+  const mistralKey = localStorage.getItem('mathsolver_mistral_key') || '';
+  const mistralModel = localStorage.getItem('mathsolver_mistral_model') || '';
+  if (mistralKey.trim()) {
+    try {
+      const models = await fetchAvailableModels(MISTRAL_CONFIG.baseUrl, mistralKey);
+      const visionModels = models.filter((m: string) => m.includes('pixtral') || m.includes('vision'));
+      const preferredVision = MISTRAL_CONFIG.preferredModels.filter(m => m.includes('pixtral') || m.includes('vision'));
+      const model = mistralModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
+      const text = await callOpenAIVisionCompatible(mistralKey, model, MISTRAL_CONFIG.baseUrl, base64Image, mimeType);
+      return { text, usedProvider: 'Mistral' };
+    } catch { /* ignore, try next */ }
+  }
+
+  const cometapiKey = localStorage.getItem('mathsolver_cometapi_key') || '';
+  const cometapiModel = localStorage.getItem('mathsolver_cometapi_model') || '';
+  if (cometapiKey.trim()) {
+    try {
+      const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cometapiKey);
+      const model = cometapiModel || selectBestModel(models, COMETAPI_CONFIG.preferredModels);
+      const text = await callOpenAIVisionCompatible(cometapiKey, model, COMETAPI_CONFIG.baseUrl, base64Image, mimeType);
+      return { text, usedProvider: 'CometAPI' };
+    } catch { /* ignore, try next */ }
+  }
+
+  return null;
 }
 
 // =====================================
@@ -262,7 +338,7 @@ export const mathSolverAPI = {
       else if (cfg.provider === 'morphllm' && cfg.morphllmKey) {
         const models = await fetchAvailableModels(MORPHLLM_CONFIG.baseUrl, cfg.morphllmKey);
         const model = cfg.morphllmModel || selectBestModel(models, MORPHLLM_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.morphllmKey, model, MORPHLLM_CONFIG.baseUrl, prompt);
+        result = await callOpenAICompatible(cfg.morphllmKey, model, prompt);
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
         const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
@@ -354,9 +430,21 @@ export const mathSolverAPI = {
         }
       }
       else if (cfg.provider === 'morphllm' && cfg.morphllmKey) {
-        const models = await fetchAvailableModels(MORPHLLM_CONFIG.baseUrl, cfg.morphllmKey);
-        const model = cfg.morphllmModel || selectBestModel(models, MORPHLLM_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.morphllmKey, model, MORPHLLM_CONFIG.baseUrl, base64Image, mimeType);
+        // MorphLLM doesn't support images directly, so we try ANY available provider for OCR
+        const ocrResult = await extractTextWithAnyProvider(base64Image, mimeType);
+
+        if (ocrResult) {
+          extractedText = ocrResult.text;
+          console.log(`[MorphLLM] OCR done via ${ocrResult.usedProvider}`);
+        } else {
+          return {
+            success: false,
+            latex: '',
+            confidence: 0,
+            rawText: '',
+            error: '📷 MorphLLM لا يدعم قراءة الصور مباشرة.\n\nلحل المسائل من الصور باستخدام MorphLLM، أضف مفتاحًا لأي مزود يدعم الصور (Gemini, OpenAI, Mistral Pixtral, إلخ) في قسم "مزودين إضافيين" بالإعدادات (⚙️).\n\nالنص هيتم استخراجه تلقائيًا ويتحلّل بـ MorphLLM.',
+          };
+        }
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
         const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
@@ -474,27 +562,31 @@ function cleanExtractedText(text: string): string {
 // API Calls (مباشرة من غير Proxy)
 // =====================================
 
-async function callOpenAICompatible(apiKey: string, model: string, baseUrl: string, prompt: string) {
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+async function callOpenAICompatible(apiKey: string, model: string, prompt: string) {
+  const response = await fetch(`${MORPHLLM_CONFIG.baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
       max_tokens: 4000,
+      stream: false,
     }),
   });
+
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`API error: ${response.status} - ${errorText}`);
+    throw new Error(`NVIDIA API error: ${response.status} - ${errorText}`);
   }
+
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content || '';
   try {
@@ -508,17 +600,19 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
   }
 }
 
-async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string): Promise<string> {
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+// ✅ NVIDIA Vision - uses standard OpenAI-compatible image_url format
+async function callOpenAIVisionCompatible(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
+  const response = await fetch(`${MORPHLLM_CONFIG.baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
@@ -526,12 +620,15 @@ async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl
       ],
       temperature: 0.1,
       max_tokens: 2000,
+      stream: false,
     }),
   });
+
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Vision API error: ${response.status} - ${errorText}`);
+    throw new Error(`NVIDIA Vision API error: ${response.status} - ${errorText}`);
   }
+
   const data = await response.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
@@ -547,7 +644,7 @@ async function callGeminiVision(apiKey: string, model: string, base64Image: stri
         contents: [{
           role: 'user',
           parts: [
-            { text: 'You are an expert OCR system for mathematical equations. Look at this image and extract ALL mathematical text. Return ONLY the mathematical expression in PURE LaTeX format. Do NOT use \\text{} or \\mbox{}. Do NOT add any explanation, just the raw LaTeX.' },
+            { text: 'You are an expert OCR system for mathematical equations. Look at this image and extract ALL mathematical text. Return ONLY the mathematical expression in PURE LaTeX format. Do NOT use \text{} or \mbox{}. Do NOT add any explanation, just the raw LaTeX.' },
             { inlineData: { mimeType: mimeType, data: base64Image } },
           ],
         }],
@@ -574,7 +671,7 @@ async function callOpenAIVision(apiKey: string, model: string, base64Image: stri
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } },
@@ -602,7 +699,7 @@ async function callBasetenVision(apiKey: string, model: string, baseUrl: string,
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
@@ -630,7 +727,7 @@ async function callBasetenDirect(apiKey: string, model: string, baseUrl: string,
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
@@ -664,7 +761,7 @@ async function callOpenAIDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       response_format: { type: 'json_object' },
@@ -684,7 +781,7 @@ async function callGeminiDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       contents: [{ 
         role: 'user', 
-        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' }] 
+        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' }] 
       }],
       generationConfig: { temperature: 0.2, maxOutputTokens: 4000 },
     }),
@@ -722,9 +819,9 @@ ${problem}
 CRITICAL RULES:
 - Language: ${language === 'ar' ? 'Arabic' : 'English'}
 - Detail level: ${detailMap[detailLevel] || 'step-by-step'}
-- Use PURE LaTeX for equations (NO \\text{} or \\mbox{} wrappers)
-- Example good equation: \\int x^4 dx = \\frac{x^5}{5}
-- Example bad equation: \\text{integral of } x^4 \\text{ is } \\frac{x^5}{5}
+- Use PURE LaTeX for equations (NO \text{} or \mbox{} wrappers)
+- Example good equation: \int x^4 dx = \frac{x^5}{5}
+- Example bad equation: \text{integral of } x^4 \text{ is } \frac{x^5}{5}
 - Show all mathematical steps clearly
 - Include the name of each rule/law used
 - Verify the final answer
@@ -734,11 +831,11 @@ Respond in this JSON format:
   "steps": [{
     "stepNumber": 1,
     "explanation": "detailed explanation in ${language === 'ar' ? 'Arabic' : 'English'}",
-    "equation": "PURE LaTeX equation like: \\int x^4 dx = \\frac{x^5}{5}",
+    "equation": "PURE LaTeX equation like: \int x^4 dx = \frac{x^5}{5}",
     "rule": "name of rule used",
     "isImportant": true/false
   }],
-  "finalAnswer": "final answer in PURE LaTeX like: \\frac{x^5}{5} - x^3 + \\frac{5x^2}{2} - 7x + C",
+  "finalAnswer": "final answer in PURE LaTeX like: \frac{x^5}{5} - x^3 + \frac{5x^2}{2} - 7x + C",
   "verification": "how to verify this answer"
 }`;
 }
@@ -747,11 +844,11 @@ function generateDemoSolution(problem: string, language: string) {
   const isAr = language === 'ar';
   return {
     steps: [
-      { stepNumber: 1, explanation: isAr ? 'نبدأ بتحليل المسألة' : 'Start analyzing', equation: '\\int x^4 dx = \\frac{x^5}{5}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
-      { stepNumber: 2, explanation: isAr ? 'نكمل الحل' : 'Continue solving', equation: '\\int (-3x^2) dx = -x^3', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: false },
-      { stepNumber: 3, explanation: isAr ? 'النتيجة النهائية' : 'Final result', equation: '\\int 5x dx = \\frac{5x^2}{2}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
+      { stepNumber: 1, explanation: isAr ? 'نبدأ بتحليل المسألة' : 'Start analyzing', equation: '\int x^4 dx = \frac{x^5}{5}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
+      { stepNumber: 2, explanation: isAr ? 'نكمل الحل' : 'Continue solving', equation: '\int (-3x^2) dx = -x^3', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: false },
+      { stepNumber: 3, explanation: isAr ? 'النتيجة النهائية' : 'Final result', equation: '\int 5x dx = \frac{5x^2}{2}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
     ],
-    finalAnswer: '\\frac{x^5}{5} - x^3 + \\frac{5x^2}{2} - 7x + C',
+    finalAnswer: '\frac{x^5}{5} - x^3 + \frac{5x^2}{2} - 7x + C',
     verification: isAr ? 'اشتق الإجابة للتحقق' : 'Differentiate the answer to verify',
   };
 }
