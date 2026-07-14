@@ -336,7 +336,6 @@ export const mathSolverAPI = {
 
       if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
         // Cerebras: multimodal not enabled for most accounts
-        // Try once, if fails show helpful message
         try {
           const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
           const model = cfg.cerebrasModel || selectBestModel(models, CEREBRAS_CONFIG.preferredModels);
@@ -355,23 +354,8 @@ export const mathSolverAPI = {
         }
       }
       else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
-        // NVIDIA: try with proper headers and error handling
-        try {
-          const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
-          const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
-          extractedText = await callNvidiaVision(cfg.nvidiaKey, model, base64Image, mimeType);
-        } catch (err: any) {
-          if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-            return {
-              success: false,
-              latex: '',
-              confidence: 0,
-              rawText: '',
-              error: 'NVIDIA: مشكلة في الاتصال. تأكد من صلاحية المفتاح وجرب مزود تاني للصور.',
-            };
-          }
-          throw err;
-        }
+        // NVIDIA: use ai.api.nvidia.com endpoint with <img> tag format
+        extractedText = await callNvidiaVision(cfg.nvidiaKey, base64Image, mimeType);
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
         const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
@@ -551,9 +535,13 @@ async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
-// ✅ NVIDIA Vision with extra headers and proper error handling
-async function callNvidiaVision(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
-  const response = await fetch(`${NVIDIA_CONFIG.baseUrl}/chat/completions`, {
+// ✅ NVIDIA Vision - uses ai.api.nvidia.com with <img> tag format
+async function callNvidiaVision(apiKey: string, base64Image: string, mimeType: string): Promise<string> {
+  // NVIDIA vision models use ai.api.nvidia.com endpoint with <img> tag in content
+  const visionModel = 'meta/llama-3.2-90b-vision-instruct';
+  const invokeUrl = `https://ai.api.nvidia.com/v1/gr/${visionModel}/chat/completions`;
+
+  const response = await fetch(invokeUrl, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -561,24 +549,25 @@ async function callNvidiaVision(apiKey: string, model: string, base64Image: stri
       'Accept': 'application/json',
     },
     body: JSON.stringify({
-      model: model,
+      model: visionModel,
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
-        { role: 'user', content: [
-          { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
-          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
-        ]},
+        {
+          role: 'user',
+          content: `Extract the mathematical equation from this image as pure LaTeX. No \text{} or \mbox{}. <img src="data:${mimeType};base64,${base64Image}" />`
+        }
       ],
+      max_tokens: 1024,
       temperature: 0.1,
-      max_tokens: 2000,
       top_p: 1.0,
       stream: false,
     }),
   });
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`NVIDIA Vision API error: ${response.status} - ${errorText}`);
   }
+
   const data = await response.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
