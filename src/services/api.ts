@@ -4,77 +4,76 @@ import type { SolverRequest, SolverResponse, OCRResult, ProviderConfig } from '.
 // ✅ إعدادات المزودين
 // =====================================
 
-const BAZAARLINK_CONFIG: ProviderConfig = {
-  id: 'bazaarlink',
-  name: 'BazaarLink',
-  nameAr: 'بازار لينك',
-  baseUrl: 'https://bazaarlink.ai/api/v1',
+const GROQ_CONFIG: ProviderConfig = {
+  id: 'groq',
+  name: 'Groq',
+  nameAr: 'جروك',
+  baseUrl: 'https://api.groq.com/openai/v1',
   apiKey: '',
   models: [],
   preferredModels: [
-    'kimi-k2.7-code', 'kimi-k2.6', 'kimi-k2.5', 'kimi-k2-thinking',
-    'kimi-k2-250905', 'kimi-k2-0905-preview', 'kimi-k2-0711-preview',
-    'qwen3.7-max', 'qwen3.7-plus', 'qwen3.6-plus', 'qwen3.5-plus',
-    'qwen3-max', 'qwen3-coder', 'qwen-plus', 'qwen-max',
-    'deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v3.2',
-    'deepseek-v3.1', 'deepseek-v3', 'deepseek-chat', 'deepseek-r1',
-    'glm-5.2', 'glm-5.1', 'glm-5', 'glm-4.7', 'glm-4.6',
-    'gemini-3.1-pro-preview', 'gemini-3-flash', 'gemini-2.5-pro',
-    'gemini-2.5-flash', 'gemini-2.5-flash-lite',
-    'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-sonnet-4-5',
-    'claude-opus-4-6',
-    'gpt-5-mini', 'gpt-4.1-mini', 'gpt-4o-mini', 'gpt-4o',
+    'llama-4-scout-17b-16e-instruct',
+    'llama-4-maverick-17b-128e-instruct',
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'mixtral-8x7b-32768',
+    'gemma2-9b-it',
+    'deepseek-r1-distill-llama-70b',
+    'deepseek-r1-distill-qwen-32b',
+    'qwen-qwq-32b',
   ],
-  color: 'bg-gradient-to-br from-pink-500 to-rose-600',
+  color: 'bg-gradient-to-br from-red-500 to-pink-600',
+  badge: 'سريع',
+};
+
+const NVIDIA_CONFIG: ProviderConfig = {
+  id: 'nvidia',
+  name: 'NVIDIA',
+  nameAr: 'إنفيديا',
+  baseUrl: 'https://integrate.api.nvidia.com/v1',
+  apiKey: '',
+  models: [],
+  preferredModels: [
+    'nvidia/llama-3.1-nemotron-70b-instruct',
+    'nvidia/llama-3.1-nemotron-51b-instruct',
+    'nvidia/llama-3.3-nemotron-super-49b-v1',
+    'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+    'meta/llama-3.1-405b-instruct',
+    'meta/llama-3.3-70b-instruct',
+    'meta/llama-3.1-70b-instruct',
+    'meta/llama-3.1-8b-instruct',
+    'mistralai/mistral-large-2-instruct',
+    'mistralai/mixtral-8x22b-instruct-v0.1',
+    'deepseek-ai/deepseek-r1',
+    'google/gemma-2-27b-it',
+    'google/gemma-2-9b-it',
+    'qwen/qwen2.5-72b-instruct',
+    'microsoft/phi-4-multimodal-instruct',
+  ],
+  color: 'bg-gradient-to-br from-green-500 to-lime-600',
   badge: 'جديد',
 };
 
-const COMETAPI_CONFIG: ProviderConfig = {
-  id: 'cometapi',
-  name: 'CometAPI',
-  nameAr: 'كوميت API',
-  baseUrl: 'https://api.cometapi.com/v1',
+const MISTRAL_CONFIG: ProviderConfig = {
+  id: 'mistral',
+  name: 'Mistral AI',
+  nameAr: 'ميسترال AI',
+  baseUrl: 'https://api.mistral.ai/v1',
   apiKey: '',
   models: [],
   preferredModels: [
-    'gpt-5.6', 'gpt-5.5-pro', 'gpt-5.5', 'gpt-5.4-pro', 'gpt-5.4',
-    'gpt-5.3-chat-latest', 'gpt-5.2-pro', 'gpt-5.2', 'gpt-5.1',
-    'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini',
-    'gpt-4o', 'gpt-4o-mini',
-    'o4-mini', 'o3-pro', 'o3', 'o3-mini-high', 'o3-mini',
-    'o1-pro', 'o1', 'o1-mini',
-    'gemini-3.1-pro-preview', 'gemini-3-pro-preview', 'gemini-3-flash',
-    'gemini-3-flash-thinking', 'gemini-2.5-pro', 'gemini-2.5-pro-thinking',
-    'gemini-2.5-flash', 'gemini-2.5-flash-lite',
-    'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-sonnet-4-5',
-    'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-opus-4-5',
-    'deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v3.2',
-    'deepseek-v3.1', 'deepseek-v3', 'deepseek-chat', 'deepseek-r1',
-    'glm-5.2', 'glm-5.1', 'glm-5', 'glm-4.7', 'glm-4.6',
-    'qwen3.7-max', 'qwen3.7-plus', 'qwen3.6-plus', 'qwen3.5-plus',
-    'qwen3-max', 'qwen3-coder',
-    'kimi-k2.7-code', 'kimi-k2.6', 'kimi-k2.5',
-    'grok-4.5', 'grok-4.3', 'grok-4',
-    'llama-4-maverick', 'llama-4-scout',
-    'doubao-seed-2-1-pro', 'doubao-seed-2-1-turbo',
+    'mistral-large-latest',
+    'mistral-medium-latest',
+    'mistral-small-latest',
+    'codestral-latest',
+    'pixtral-large-latest',
+    'ministral-8b-latest',
+    'ministral-3b-latest',
+    'open-mistral-nemo',
+    'open-codestral-mamba',
   ],
-  color: 'bg-gradient-to-br from-cyan-500 to-blue-600',
+  color: 'bg-gradient-to-br from-orange-400 to-amber-500',
   badge: 'جديد',
-};
-
-const CEREBRAS_CONFIG: ProviderConfig = {
-  id: 'cerebras',
-  name: 'Cerebras',
-  nameAr: 'سيريبراس',
-  baseUrl: 'https://api.cerebras.ai/v1',
-  apiKey: '',
-  models: [],
-  preferredModels: [
-    'llama3.1-8b',
-    'llama-3.3-70b',
-  ],
-  color: 'bg-gradient-to-br from-yellow-500 to-orange-600',
-  badge: 'مجاني',
 };
 
 // ✅ نوع الإعدادات المخزنة
@@ -85,12 +84,12 @@ interface StoredConfig {
   baseUrl: string;
   customUrl: string;
   useCustom: boolean;
-  bazaarlinkKey: string;
-  cometapiKey: string;
-  cerebrasKey: string;
-  bazaarlinkModel: string;
-  cometapiModel: string;
-  cerebrasModel: string;
+  groqKey: string;
+  nvidiaKey: string;
+  mistralKey: string;
+  groqModel: string;
+  nvidiaModel: string;
+  mistralModel: string;
 }
 
 // =====================================
@@ -105,14 +104,14 @@ function getStoredConfig(): StoredConfig {
     baseUrl: localStorage.getItem('mathsolver_base_url') || 'https://inference.baseten.co/v1',
     customUrl: localStorage.getItem('mathsolver_custom_url') || '',
     useCustom: localStorage.getItem('mathsolver_use_custom') === 'true',
-    
-    bazaarlinkKey: localStorage.getItem('mathsolver_bazaarlink_key') || '',
-    cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
-    cerebrasKey: localStorage.getItem('mathsolver_cerebras_key') || '',
-    
-    bazaarlinkModel: localStorage.getItem('mathsolver_bazaarlink_model') || '',
-    cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
-    cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
+
+    groqKey: localStorage.getItem('mathsolver_groq_key') || '',
+    nvidiaKey: localStorage.getItem('mathsolver_nvidia_key') || '',
+    mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
+
+    groqModel: localStorage.getItem('mathsolver_groq_model') || '',
+    nvidiaModel: localStorage.getItem('mathsolver_nvidia_model') || '',
+    mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
   };
 }
 
@@ -151,58 +150,58 @@ function selectBestModel(availableModels: string[], preferredModels: string[]): 
 export const mathSolverAPI = {
   hasApiKeys: (): boolean => {
     const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.bazaarlinkKey || cfg.cometapiKey || cfg.cerebrasKey);
+    return !!(cfg.apiKey || cfg.groqKey || cfg.nvidiaKey || cfg.mistralKey);
   },
 
   getProviderInfo: () => {
     const cfg = getStoredConfig();
     const modelName = cfg.model.split('/').pop() || cfg.model;
-    
+
     let activeModel = modelName;
     let activeProvider = cfg.provider;
-    
-    if (cfg.provider === 'bazaarlink' && cfg.bazaarlinkKey) {
-      activeModel = cfg.bazaarlinkModel || 'BazaarLink Auto';
-      activeProvider = 'bazaarlink';
-    } else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
-      activeModel = cfg.cometapiModel || 'CometAPI Auto';
-      activeProvider = 'cometapi';
-    } else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
-      activeModel = cfg.cerebrasModel || 'Cerebras Auto';
-      activeProvider = 'cerebras';
+
+    if (cfg.provider === 'groq' && cfg.groqKey) {
+      activeModel = cfg.groqModel || 'Groq Auto';
+      activeProvider = 'groq';
+    } else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
+      activeModel = cfg.nvidiaModel || 'NVIDIA Auto';
+      activeProvider = 'nvidia';
+    } else if (cfg.provider === 'mistral' && cfg.mistralKey) {
+      activeModel = cfg.mistralModel || 'Mistral Auto';
+      activeProvider = 'mistral';
     }
-    
+
     return {
-      hasKeys: !!(cfg.apiKey || cfg.bazaarlinkKey || cfg.cometapiKey || cfg.cerebrasKey),
+      hasKeys: !!(cfg.apiKey || cfg.groqKey || cfg.nvidiaKey || cfg.mistralKey),
       provider: activeProvider,
       model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
     };
   },
 
-  fetchBazaarLinkModels: async (): Promise<string[]> => {
+  fetchGroqModels: async (): Promise<string[]> => {
     const cfg = getStoredConfig();
-    if (!cfg.bazaarlinkKey) return [];
-    return fetchAvailableModels(BAZAARLINK_CONFIG.baseUrl, cfg.bazaarlinkKey);
+    if (!cfg.groqKey) return [];
+    return fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
   },
 
-  fetchCometAPIModels: async (): Promise<string[]> => {
+  fetchNvidiaModels: async (): Promise<string[]> => {
     const cfg = getStoredConfig();
-    if (!cfg.cometapiKey) return [];
-    return fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
+    if (!cfg.nvidiaKey) return [];
+    return fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
   },
 
-  fetchCerebrasModels: async (): Promise<string[]> => {
+  fetchMistralModels: async (): Promise<string[]> => {
     const cfg = getStoredConfig();
-    if (!cfg.cerebrasKey) return [];
-    return fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
+    if (!cfg.mistralKey) return [];
+    return fetchAvailableModels(MISTRAL_CONFIG.baseUrl, cfg.mistralKey);
   },
 
   solve: async (request: SolverRequest): Promise<SolverResponse> => {
     const startTime = Date.now();
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.bazaarlinkKey && !cfg.cometapiKey && !cfg.cerebrasKey) {
+    if (!cfg.apiKey && !cfg.groqKey && !cfg.nvidiaKey && !cfg.mistralKey) {
       return {
         success: false,
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح.',
@@ -214,20 +213,20 @@ export const mathSolverAPI = {
       const prompt = buildPrompt(request.problem, request.subject, request.language, request.detailLevel);
       let result;
 
-      if (cfg.provider === 'bazaarlink' && cfg.bazaarlinkKey) {
-        const models = await fetchAvailableModels(BAZAARLINK_CONFIG.baseUrl, cfg.bazaarlinkKey);
-        const model = cfg.bazaarlinkModel || selectBestModel(models, BAZAARLINK_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.bazaarlinkKey, model, BAZAARLINK_CONFIG.baseUrl, prompt);
+      if (cfg.provider === 'groq' && cfg.groqKey) {
+        const models = await fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
+        const model = cfg.groqModel || selectBestModel(models, GROQ_CONFIG.preferredModels);
+        result = await callOpenAICompatible(cfg.groqKey, model, GROQ_CONFIG.baseUrl, prompt);
       }
-      else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
-        const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
-        const model = cfg.cometapiModel || selectBestModel(models, COMETAPI_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.cometapiKey, model, COMETAPI_CONFIG.baseUrl, prompt);
+      else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
+        const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
+        const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
+        result = await callOpenAICompatible(cfg.nvidiaKey, model, NVIDIA_CONFIG.baseUrl, prompt);
       }
-      else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
-        const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
-        const model = cfg.cerebrasModel || selectBestModel(models, CEREBRAS_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.cerebrasKey, model, CEREBRAS_CONFIG.baseUrl, prompt);
+      else if (cfg.provider === 'mistral' && cfg.mistralKey) {
+        const models = await fetchAvailableModels(MISTRAL_CONFIG.baseUrl, cfg.mistralKey);
+        const model = cfg.mistralModel || selectBestModel(models, MISTRAL_CONFIG.preferredModels);
+        result = await callOpenAICompatible(cfg.mistralKey, model, MISTRAL_CONFIG.baseUrl, prompt);
       }
       else if (cfg.provider === 'baseten' || cfg.baseUrl.includes('baseten')) {
         result = await callBasetenDirect(cfg.apiKey, cfg.model, cfg.baseUrl, prompt);
@@ -274,7 +273,7 @@ export const mathSolverAPI = {
   processImage: async (imageFile: File): Promise<OCRResult> => {
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.bazaarlinkKey && !cfg.cometapiKey && !cfg.cerebrasKey) {
+    if (!cfg.apiKey && !cfg.groqKey && !cfg.nvidiaKey && !cfg.mistralKey) {
       return {
         success: false,
         latex: '',
@@ -290,20 +289,20 @@ export const mathSolverAPI = {
       let extractedText = '';
       let confidence = 0.95;
 
-      if (cfg.provider === 'bazaarlink' && cfg.bazaarlinkKey) {
-        const models = await fetchAvailableModels(BAZAARLINK_CONFIG.baseUrl, cfg.bazaarlinkKey);
-        const model = cfg.bazaarlinkModel || selectBestModel(models, BAZAARLINK_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.bazaarlinkKey, model, BAZAARLINK_CONFIG.baseUrl, base64Image, mimeType);
+      if (cfg.provider === 'groq' && cfg.groqKey) {
+        const models = await fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
+        const model = cfg.groqModel || selectBestModel(models, GROQ_CONFIG.preferredModels);
+        extractedText = await callOpenAIVisionCompatible(cfg.groqKey, model, GROQ_CONFIG.baseUrl, base64Image, mimeType);
       }
-      else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
-        const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
-        const model = cfg.cometapiModel || selectBestModel(models, COMETAPI_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.cometapiKey, model, COMETAPI_CONFIG.baseUrl, base64Image, mimeType);
+      else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
+        const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
+        const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
+        extractedText = await callOpenAIVisionCompatible(cfg.nvidiaKey, model, NVIDIA_CONFIG.baseUrl, base64Image, mimeType);
       }
-      else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
-        const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
-        const model = cfg.cerebrasModel || selectBestModel(models, CEREBRAS_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.cerebrasKey, model, CEREBRAS_CONFIG.baseUrl, base64Image, mimeType);
+      else if (cfg.provider === 'mistral' && cfg.mistralKey) {
+        const models = await fetchAvailableModels(MISTRAL_CONFIG.baseUrl, cfg.mistralKey);
+        const model = cfg.mistralModel || selectBestModel(models, MISTRAL_CONFIG.preferredModels);
+        extractedText = await callOpenAIVisionCompatible(cfg.mistralKey, model, MISTRAL_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'gemini' || cfg.model.includes('gemini')) {
         extractedText = await callGeminiVision(cfg.apiKey, cfg.model, base64Image, mimeType);
@@ -415,7 +414,7 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
@@ -449,7 +448,7 @@ async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
@@ -478,7 +477,7 @@ async function callGeminiVision(apiKey: string, model: string, base64Image: stri
         contents: [{
           role: 'user',
           parts: [
-            { text: 'You are an expert OCR system for mathematical equations. Look at this image and extract ALL mathematical text. Return ONLY the mathematical expression in PURE LaTeX format. Do NOT use \\text{} or \\mbox{}. Do NOT add any explanation, just the raw LaTeX.' },
+            { text: 'You are an expert OCR system for mathematical equations. Look at this image and extract ALL mathematical text. Return ONLY the mathematical expression in PURE LaTeX format. Do NOT use \text{} or \mbox{}. Do NOT add any explanation, just the raw LaTeX.' },
             { inlineData: { mimeType: mimeType, data: base64Image } },
           ],
         }],
@@ -505,7 +504,7 @@ async function callOpenAIVision(apiKey: string, model: string, base64Image: stri
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } },
@@ -533,7 +532,7 @@ async function callBasetenVision(apiKey: string, model: string, baseUrl: string,
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
@@ -561,7 +560,7 @@ async function callBasetenDirect(apiKey: string, model: string, baseUrl: string,
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
@@ -595,7 +594,7 @@ async function callOpenAIDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       response_format: { type: 'json_object' },
@@ -615,7 +614,7 @@ async function callGeminiDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       contents: [{ 
         role: 'user', 
-        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' }] 
+        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' }] 
       }],
       generationConfig: { temperature: 0.2, maxOutputTokens: 4000 },
     }),
@@ -653,9 +652,9 @@ ${problem}
 CRITICAL RULES:
 - Language: ${language === 'ar' ? 'Arabic' : 'English'}
 - Detail level: ${detailMap[detailLevel] || 'step-by-step'}
-- Use PURE LaTeX for equations (NO \\text{} or \\mbox{} wrappers)
-- Example good equation: \\int x^4 dx = \\frac{x^5}{5}
-- Example bad equation: \\text{integral of } x^4 \\text{ is } \\frac{x^5}{5}
+- Use PURE LaTeX for equations (NO \text{} or \mbox{} wrappers)
+- Example good equation: \int x^4 dx = \frac{x^5}{5}
+- Example bad equation: \text{integral of } x^4 \text{ is } \frac{x^5}{5}
 - Show all mathematical steps clearly
 - Include the name of each rule/law used
 - Verify the final answer
@@ -665,11 +664,11 @@ Respond in this JSON format:
   "steps": [{
     "stepNumber": 1,
     "explanation": "detailed explanation in ${language === 'ar' ? 'Arabic' : 'English'}",
-    "equation": "PURE LaTeX equation like: \\int x^4 dx = \\frac{x^5}{5}",
+    "equation": "PURE LaTeX equation like: \int x^4 dx = \frac{x^5}{5}",
     "rule": "name of rule used",
     "isImportant": true/false
   }],
-  "finalAnswer": "final answer in PURE LaTeX like: \\frac{x^5}{5} - x^3 + \\frac{5x^2}{2} - 7x + C",
+  "finalAnswer": "final answer in PURE LaTeX like: \frac{x^5}{5} - x^3 + \frac{5x^2}{2} - 7x + C",
   "verification": "how to verify this answer"
 }`;
 }
@@ -678,11 +677,11 @@ function generateDemoSolution(problem: string, language: string) {
   const isAr = language === 'ar';
   return {
     steps: [
-      { stepNumber: 1, explanation: isAr ? 'نبدأ بتحليل المسألة' : 'Start analyzing', equation: '\\int x^4 dx = \\frac{x^5}{5}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
-      { stepNumber: 2, explanation: isAr ? 'نكمل الحل' : 'Continue solving', equation: '\\int (-3x^2) dx = -x^3', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: false },
-      { stepNumber: 3, explanation: isAr ? 'النتيجة النهائية' : 'Final result', equation: '\\int 5x dx = \\frac{5x^2}{2}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
+      { stepNumber: 1, explanation: isAr ? 'نبدأ بتحليل المسألة' : 'Start analyzing', equation: '\int x^4 dx = \frac{x^5}{5}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
+      { stepNumber: 2, explanation: isAr ? 'نكمل الحل' : 'Continue solving', equation: '\int (-3x^2) dx = -x^3', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: false },
+      { stepNumber: 3, explanation: isAr ? 'النتيجة النهائية' : 'Final result', equation: '\int 5x dx = \frac{5x^2}{2}', rule: isAr ? 'قاعدة القوة' : 'Power Rule', isImportant: true },
     ],
-    finalAnswer: '\\frac{x^5}{5} - x^3 + \\frac{5x^2}{2} - 7x + C',
+    finalAnswer: '\frac{x^5}{5} - x^3 + \frac{5x^2}{2} - 7x + C',
     verification: isAr ? 'اشتق الإجابة للتحقق' : 'Differentiate the answer to verify',
   };
 }
