@@ -99,13 +99,13 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     badge: 'مجاني',
   },
   {
-    id: 'nvidia',
-    name: 'NVIDIA',
-    nameAr: 'إنفيديا',
-    keyStorage: 'mathsolver_nvidia_key',
-    modelStorage: 'mathsolver_nvidia_model',
-    baseUrl: 'https://integrate.api.nvidia.com/v1',
-    color: 'bg-gradient-to-br from-green-500 to-lime-600',
+    id: 'morphllm',
+    name: 'MorphLLM',
+    nameAr: 'مورف LLM',
+    keyStorage: 'mathsolver_morphllm_key',
+    modelStorage: 'mathsolver_morphllm_model',
+    baseUrl: 'https://api.morphllm.com/v1',
+    color: 'bg-gradient-to-br from-pink-500 to-rose-600',
     badge: 'جديد',
   },
   {
@@ -141,11 +141,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   // New provider keys
   const [cerebrasKey, setCerebrasKey] = useState('');
-  const [nvidiaKey, setNvidiaKey] = useState('');
+  const [morphllmKey, setMorphllmKey] = useState('');
   const [cometapiKey, setCometapiKey] = useState('');
   const [mistralKey, setMistralKey] = useState('');
   const [showCerebrasKey, setShowCerebrasKey] = useState(false);
-  const [showNvidiaKey, setShowNvidiaKey] = useState(false);
+  const [showMorphllmKey, setShowMorphllmKey] = useState(false);
   const [showCometapiKey, setShowCometapiKey] = useState(false);
   const [showMistralKey, setShowMistralKey] = useState(false);
 
@@ -161,7 +161,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setUseCustomUrl(savedUseCustom);
 
     setCerebrasKey(localStorage.getItem('mathsolver_cerebras_key') || '');
-    setNvidiaKey(localStorage.getItem('mathsolver_nvidia_key') || '');
+    setMorphllmKey(localStorage.getItem('mathsolver_morphllm_key') || '');
     setCometapiKey(localStorage.getItem('mathsolver_cometapi_key') || '');
     setMistralKey(localStorage.getItem('mathsolver_mistral_key') || '');
 
@@ -173,12 +173,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
     const savedModel = localStorage.getItem('mathsolver_model') || '';
     const hasCerebras = !!(localStorage.getItem('mathsolver_cerebras_key') || '').trim();
-    const hasNvidia = !!(localStorage.getItem('mathsolver_nvidia_key') || '').trim();
+    const hasMorphllm = !!(localStorage.getItem('mathsolver_morphllm_key') || '').trim();
     const hasCometapi = !!(localStorage.getItem('mathsolver_cometapi_key') || '').trim();
     const hasMistral = !!(localStorage.getItem('mathsolver_mistral_key') || '').trim();
     return { 
       model: savedModel, 
-      hasKey: !!savedKey.trim() || hasCerebras || hasNvidia || hasCometapi || hasMistral 
+      hasKey: !!savedKey.trim() || hasCerebras || hasMorphllm || hasCometapi || hasMistral 
     };
   };
 
@@ -189,7 +189,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     localStorage.setItem('mathsolver_use_custom', useCustomUrl.toString());
 
     localStorage.setItem('mathsolver_cerebras_key', cerebrasKey);
-    localStorage.setItem('mathsolver_nvidia_key', nvidiaKey);
+    localStorage.setItem('mathsolver_morphllm_key', morphllmKey);
     localStorage.setItem('mathsolver_cometapi_key', cometapiKey);
     localStorage.setItem('mathsolver_mistral_key', mistralKey);
 
@@ -200,19 +200,19 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
 
     // Priority: first non-empty key sets the provider
-    if (cerebrasKey.trim() && !nvidiaKey.trim() && !cometapiKey.trim() && !mistralKey.trim()) {
+    if (cerebrasKey.trim() && !morphllmKey.trim() && !cometapiKey.trim() && !mistralKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cerebras');
-    } else if (nvidiaKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim()) {
-      localStorage.setItem('mathsolver_provider', 'nvidia');
-    } else if (cometapiKey.trim() && !cerebrasKey.trim() && !nvidiaKey.trim() && !mistralKey.trim()) {
+    } else if (morphllmKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim()) {
+      localStorage.setItem('mathsolver_provider', 'morphllm');
+    } else if (cometapiKey.trim() && !cerebrasKey.trim() && !morphllmKey.trim() && !mistralKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cometapi');
-    } else if (mistralKey.trim() && !cerebrasKey.trim() && !nvidiaKey.trim() && !cometapiKey.trim()) {
+    } else if (mistralKey.trim() && !cerebrasKey.trim() && !morphllmKey.trim() && !cometapiKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'mistral');
     }
 
     setActiveConfig({ 
       model: selectedModel, 
-      hasKey: !!apiKey.trim() || !!cerebrasKey.trim() || !!nvidiaKey.trim() || !!cometapiKey.trim() || !!mistralKey.trim() 
+      hasKey: !!apiKey.trim() || !!cerebrasKey.trim() || !!morphllmKey.trim() || !!cometapiKey.trim() || !!mistralKey.trim() 
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -226,7 +226,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'openai': return 'OpenAI';
       case 'gemini': return 'Google AI Studio';
       case 'cerebras': return 'Cerebras';
-      case 'nvidia': return 'NVIDIA';
+      case 'morphllm': return 'MorphLLM';
       case 'cometapi': return 'CometAPI';
       case 'mistral': return 'Mistral AI';
       default: return provider;
@@ -239,7 +239,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'openai': return 'https://platform.openai.com/api-keys';
       case 'gemini': return 'https://aistudio.google.com/app/apikey';
       case 'cerebras': return 'https://cloud.cerebras.ai/';
-      case 'nvidia': return 'https://build.nvidia.com/explore/discover';
+      case 'morphllm': return 'https://api.morphllm.com/';
       case 'cometapi': return 'https://cometapi.com/';
       case 'mistral': return 'https://console.mistral.ai/api-keys/';
       default: return '#';
@@ -249,7 +249,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const getProviderInitials = (id: string) => {
     switch(id) {
       case 'cerebras': return 'Ce';
-      case 'nvidia': return 'Nv';
+      case 'morphllm': return 'Mo';
       case 'cometapi': return 'Co';
       case 'mistral': return 'Ms';
       default: return id.substring(0, 2).toUpperCase();
@@ -430,22 +430,22 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             {NEW_PROVIDERS.map((provider) => {
               const keyValue = 
                 provider.id === 'cerebras' ? cerebrasKey : 
-                provider.id === 'nvidia' ? nvidiaKey : 
+                provider.id === 'morphllm' ? morphllmKey : 
                 provider.id === 'cometapi' ? cometapiKey :
                 mistralKey;
               const setKeyValue = 
                 provider.id === 'cerebras' ? setCerebrasKey : 
-                provider.id === 'nvidia' ? setNvidiaKey : 
+                provider.id === 'morphllm' ? setMorphllmKey : 
                 provider.id === 'cometapi' ? setCometapiKey :
                 setMistralKey;
               const showKeyValue = 
                 provider.id === 'cerebras' ? showCerebrasKey : 
-                provider.id === 'nvidia' ? showNvidiaKey : 
+                provider.id === 'morphllm' ? showMorphllmKey : 
                 provider.id === 'cometapi' ? showCometapiKey :
                 showMistralKey;
               const setShowKeyValue = 
                 provider.id === 'cerebras' ? setShowCerebrasKey : 
-                provider.id === 'nvidia' ? setShowNvidiaKey : 
+                provider.id === 'morphllm' ? setShowMorphllmKey : 
                 provider.id === 'cometapi' ? setShowCometapiKey :
                 setShowMistralKey;
               const hasKey = !!keyValue.trim();
