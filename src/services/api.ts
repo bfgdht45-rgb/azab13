@@ -173,7 +173,8 @@ async function fetchAvailableModels(baseUrl: string, apiKey: string): Promise<st
 
 async function fetchCohereModels(apiKey: string): Promise<string[]> {
   try {
-    const response = await fetch('https://api.cohere.ai/v2/models', {
+    // Try v1 models endpoint first
+    const response = await fetch('https://api.cohere.ai/v1/models', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -375,7 +376,7 @@ export const mathSolverAPI = {
       else if (cfg.provider === 'cohere' && cfg.cohereKey) {
         const models = await fetchCohereModels(cfg.cohereKey);
         const model = cfg.cohereModel || selectBestModel(models, COHERE_CONFIG.preferredModels);
-        result = await callCohereV2(cfg.cohereKey, model, prompt);
+        result = await callCohereV1(cfg.cohereKey, model, prompt);
       }
       else if (cfg.provider === 'baseten' || cfg.baseUrl.includes('baseten')) {
         result = await callBasetenDirect(cfg.apiKey, cfg.model, cfg.baseUrl, prompt);
@@ -504,7 +505,7 @@ export const mathSolverAPI = {
             m.includes('vision') || m.includes('aya-vision')
           );
           const model = cfg.cohereModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
-          extractedText = await callCohereV2Vision(cfg.cohereKey, model, base64Image, mimeType);
+          extractedText = await callCohereV1Vision(cfg.cohereKey, model, base64Image, mimeType);
         } catch (err: any) {
           if (err.message?.includes('multimodal') || err.message?.includes('403') || err.message?.includes('not supported')) {
             return {
@@ -644,9 +645,9 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
   return extractJSONFromResponse(content);
 }
 
-// Cohere v2 API - uses messages array instead of preamble/message
-async function callCohereV2(apiKey: string, model: string, prompt: string) {
-  const response = await fetch('https://api.cohere.ai/v2/chat', {
+// Cohere v1 API with response_format for forcing JSON output
+async function callCohereV1(apiKey: string, model: string, prompt: string) {
+  const response = await fetch('https://api.cohere.ai/v1/chat', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -654,15 +655,11 @@ async function callCohereV2(apiKey: string, model: string, prompt: string) {
     },
     body: JSON.stringify({
       model: model,
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert mathematics teacher. You MUST solve problems step by step with detailed explanations. You MUST respond in valid JSON format only. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}. Do not include any text outside the JSON. No markdown code blocks. Just raw JSON.' 
-        },
-        { role: 'user', content: prompt },
-      ],
+      message: prompt,
+      preamble: 'You are an expert mathematics teacher. You MUST solve problems step by step with detailed explanations. You MUST respond in valid JSON format only. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}. Do not include any text outside the JSON. No markdown code blocks. Just raw JSON.',
       temperature: 0.2,
       max_tokens: 4000,
+      response_format: { type: 'json_object' },
     }),
   });
   if (!response.ok) {
@@ -670,14 +667,17 @@ async function callCohereV2(apiKey: string, model: string, prompt: string) {
     throw new Error(`Cohere API error: ${response.status} - ${errorText}`);
   }
   const data = await response.json();
-  // v2 response: data.message.content[0].text
-  const content = data.message?.content?.[0]?.text || data.text || '';
+  // v1 response: data.text
+  const content = data.text || '';
+  if (!content) {
+    throw new Error('Cohere returned empty response. Raw data: ' + JSON.stringify(data).substring(0, 500));
+  }
   return extractJSONFromResponse(content);
 }
 
-// Cohere v2 Vision - uses messages array with images
-async function callCohereV2Vision(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
-  const response = await fetch('https://api.cohere.ai/v2/chat', {
+// Cohere v1 Vision API
+async function callCohereV1Vision(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
+  const response = await fetch('https://api.cohere.ai/v1/chat', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -685,19 +685,13 @@ async function callCohereV2Vision(apiKey: string, model: string, base64Image: st
     },
     body: JSON.stringify({
       model: model,
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}. Return only the LaTeX, no explanation.' 
-        },
-        { 
-          role: 'user', 
-          content: [
-            { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
-            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } }
-          ]
-        },
-      ],
+      message: 'Extract the mathematical equation from this image as pure LaTeX. Return ONLY the LaTeX expression, no explanation.',
+      preamble: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.',
+      connectors: [{ id: 'document-connector' }],
+      documents: [{
+        id: 'image',
+        data: `data:${mimeType};base64,${base64Image}`,
+      }],
       temperature: 0.1,
       max_tokens: 2000,
     }),
@@ -707,7 +701,7 @@ async function callCohereV2Vision(apiKey: string, model: string, base64Image: st
     throw new Error(`Cohere Vision API error: ${response.status} - ${errorText}`);
   }
   const data = await response.json();
-  return (data.message?.content?.[0]?.text || data.text || '').trim();
+  return (data.text || '').trim();
 }
 
 async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string): Promise<string> {
@@ -904,11 +898,9 @@ function buildPrompt(problem: string, subject: string, language: string, detailL
 
   const isAr = language === 'ar';
 
-  return `You MUST respond with ONLY a valid JSON object. No markdown, no code blocks, no extra text.
+  return `Generate a JSON object that solves this ${subjectNames[subject] || 'mathematics'} problem.
 
-Solve this ${subjectNames[subject] || 'mathematics'} problem:
-
-${problem}
+Problem: ${problem}
 
 CRITICAL RULES:
 - Language: ${isAr ? 'Arabic' : 'English'}
@@ -919,18 +911,17 @@ CRITICAL RULES:
 - Show all mathematical steps clearly
 - Include the name of each rule/law used
 - Verify the final answer
-- Respond ONLY with the JSON below, no other text
 
-JSON FORMAT:
+You MUST return ONLY a valid JSON object with this exact structure:
 {
   "steps": [{
     "stepNumber": 1,
     "explanation": "detailed explanation in ${isAr ? 'Arabic' : 'English'}",
-    "equation": "PURE LaTeX equation like: \\int x^4 dx = \\frac{x^5}{5}",
+    "equation": "PURE LaTeX equation",
     "rule": "name of rule used",
     "isImportant": true
   }],
-  "finalAnswer": "final answer in PURE LaTeX like: \\frac{x^5}{5} - x^3 + \\frac{5x^2}{2} - 7x + C",
+  "finalAnswer": "final answer in PURE LaTeX",
   "verification": "how to verify this answer"
 }`;
 }
