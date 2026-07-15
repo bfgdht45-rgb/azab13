@@ -338,7 +338,7 @@ export const mathSolverAPI = {
       else if (cfg.provider === 'morphllm' && cfg.morphllmKey) {
         const models = await fetchAvailableModels(MORPHLLM_CONFIG.baseUrl, cfg.morphllmKey);
         const model = cfg.morphllmModel || selectBestModel(models, MORPHLLM_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.morphllmKey, model, prompt);
+        result = await callOpenAICompatible(cfg.morphllmKey, model, MORPHLLM_CONFIG.baseUrl, prompt);
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
         const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
@@ -562,52 +562,12 @@ function cleanExtractedText(text: string): string {
 // API Calls (مباشرة من غير Proxy)
 // =====================================
 
-async function callOpenAICompatible(apiKey: string, model: string, prompt: string) {
-  const response = await fetch(`${MORPHLLM_CONFIG.baseUrl}/chat/completions`, {
+async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string): Promise<string> {
+  const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.2,
-      max_tokens: 4000,
-      stream: false,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`NVIDIA API error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '';
-  try {
-    return JSON.parse(content);
-  } catch {
-    const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/```\s*([\s\S]*?)```/);
-    if (jsonMatch) return JSON.parse(jsonMatch[1]);
-    const objMatch = content.match(/\{[\s\S]*\}/);
-    if (objMatch) return JSON.parse(objMatch[0]);
-    throw new Error('Could not parse JSON response');
-  }
-}
-
-// ✅ NVIDIA Vision - uses standard OpenAI-compatible image_url format
-async function callOpenAIVisionCompatible(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
-  const response = await fetch(`${MORPHLLM_CONFIG.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
     },
     body: JSON.stringify({
       model: model,
@@ -620,15 +580,12 @@ async function callOpenAIVisionCompatible(apiKey: string, model: string, base64I
       ],
       temperature: 0.1,
       max_tokens: 2000,
-      stream: false,
     }),
   });
-
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`NVIDIA Vision API error: ${response.status} - ${errorText}`);
+    throw new Error(`Vision API error: ${response.status} - ${errorText}`);
   }
-
   const data = await response.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
