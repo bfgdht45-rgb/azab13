@@ -22,37 +22,6 @@ const CEREBRAS_CONFIG: ProviderConfig = {
   badge: 'مجاني',
 };
 
-const NVIDIA_CONFIG: ProviderConfig = {
-  id: 'nvidia',
-  name: 'NVIDIA',
-  nameAr: 'إنفيديا',
-  baseUrl: 'https://integrate.api.nvidia.com/v1',
-  apiKey: '',
-  models: [],
-  preferredModels: [
-    'z-ai/glm-5.2',
-    'z-ai/glm-5.1',
-    'z-ai/glm-5',
-    'nvidia/llama-3.1-nemotron-70b-instruct',
-    'nvidia/llama-3.1-nemotron-51b-instruct',
-    'nvidia/llama-3.3-nemotron-super-49b-v1',
-    'nvidia/llama-3.1-nemotron-ultra-253b-v1',
-    'meta/llama-3.1-405b-instruct',
-    'meta/llama-3.3-70b-instruct',
-    'meta/llama-3.1-70b-instruct',
-    'meta/llama-3.1-8b-instruct',
-    'mistralai/mistral-large-2-instruct',
-    'mistralai/mixtral-8x22b-instruct-v0.1',
-    'deepseek-ai/deepseek-r1',
-    'google/gemma-2-27b-it',
-    'google/gemma-2-9b-it',
-    'qwen/qwen2.5-72b-instruct',
-    'microsoft/phi-4-multimodal-instruct',
-  ],
-  color: 'bg-gradient-to-br from-green-500 to-lime-600',
-  badge: 'جديد',
-};
-
 const COMETAPI_CONFIG: ProviderConfig = {
   id: 'cometapi',
   name: 'CometAPI',
@@ -118,11 +87,9 @@ interface StoredConfig {
   customUrl: string;
   useCustom: boolean;
   cerebrasKey: string;
-  nvidiaKey: string;
   cometapiKey: string;
   mistralKey: string;
   cerebrasModel: string;
-  nvidiaModel: string;
   cometapiModel: string;
   mistralModel: string;
 }
@@ -141,12 +108,10 @@ function getStoredConfig(): StoredConfig {
     useCustom: localStorage.getItem('mathsolver_use_custom') === 'true',
 
     cerebrasKey: localStorage.getItem('mathsolver_cerebras_key') || '',
-    nvidiaKey: localStorage.getItem('mathsolver_nvidia_key') || '',
     cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
     mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
 
     cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
-    nvidiaModel: localStorage.getItem('mathsolver_nvidia_model') || '',
     cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
   };
@@ -187,7 +152,7 @@ function selectBestModel(availableModels: string[], preferredModels: string[]): 
 export const mathSolverAPI = {
   hasApiKeys: (): boolean => {
     const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.nvidiaKey || cfg.cometapiKey || cfg.mistralKey);
+    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey);
   },
 
   getProviderInfo: () => {
@@ -200,9 +165,6 @@ export const mathSolverAPI = {
     if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
       activeModel = cfg.cerebrasModel || 'Cerebras Auto';
       activeProvider = 'cerebras';
-    } else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
-      activeModel = cfg.nvidiaModel || 'NVIDIA Auto';
-      activeProvider = 'nvidia';
     } else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
       activeModel = cfg.cometapiModel || 'CometAPI Auto';
       activeProvider = 'cometapi';
@@ -212,7 +174,7 @@ export const mathSolverAPI = {
     }
 
     return {
-      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.nvidiaKey || cfg.cometapiKey || cfg.mistralKey),
+      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey),
       provider: activeProvider,
       model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
@@ -223,12 +185,6 @@ export const mathSolverAPI = {
     const cfg = getStoredConfig();
     if (!cfg.cerebrasKey) return [];
     return fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
-  },
-
-  fetchNvidiaModels: async (): Promise<string[]> => {
-    const cfg = getStoredConfig();
-    if (!cfg.nvidiaKey) return [];
-    return fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
   },
 
   fetchCometapiModels: async (): Promise<string[]> => {
@@ -247,7 +203,7 @@ export const mathSolverAPI = {
     const startTime = Date.now();
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.nvidiaKey && !cfg.cometapiKey && !cfg.mistralKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey) {
       return {
         success: false,
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح.',
@@ -263,11 +219,6 @@ export const mathSolverAPI = {
         const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
         const model = cfg.cerebrasModel || selectBestModel(models, CEREBRAS_CONFIG.preferredModels);
         result = await callOpenAICompatible(cfg.cerebrasKey, model, CEREBRAS_CONFIG.baseUrl, prompt);
-      }
-      else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
-        const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
-        const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
-        result = await callNvidiaDirect(cfg.nvidiaKey, model, prompt);
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
         const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
@@ -324,7 +275,7 @@ export const mathSolverAPI = {
   processImage: async (imageFile: File): Promise<OCRResult> => {
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.nvidiaKey && !cfg.cometapiKey && !cfg.mistralKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey) {
       return {
         success: false,
         latex: '',
@@ -357,11 +308,6 @@ export const mathSolverAPI = {
           }
           throw err;
         }
-      }
-      else if (cfg.provider === 'nvidia' && cfg.nvidiaKey) {
-        const models = await fetchAvailableModels(NVIDIA_CONFIG.baseUrl, cfg.nvidiaKey);
-        const model = cfg.nvidiaModel || selectBestModel(models, NVIDIA_CONFIG.preferredModels);
-        extractedText = await callNvidiaVision(cfg.nvidiaKey, model, base64Image, mimeType);
       }
       else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
         const models = await fetchAvailableModels(COMETAPI_CONFIG.baseUrl, cfg.cometapiKey);
@@ -511,78 +457,6 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
     if (objMatch) return JSON.parse(objMatch[0]);
     throw new Error('Could not parse JSON response');
   }
-}
-
-// ✅ NVIDIA Direct - uses standard OpenAI-compatible format
-async function callNvidiaDirect(apiKey: string, model: string, prompt: string) {
-  const response = await fetch(`${NVIDIA_CONFIG.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.2,
-      max_tokens: 4000,
-      stream: false,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`NVIDIA API error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '';
-  try {
-    return JSON.parse(content);
-  } catch {
-    const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/```\s*([\s\S]*?)```/);
-    if (jsonMatch) return JSON.parse(jsonMatch[1]);
-    const objMatch = content.match(/\{[\s\S]*\}/);
-    if (objMatch) return JSON.parse(objMatch[0]);
-    throw new Error('Could not parse JSON response');
-  }
-}
-
-// ✅ NVIDIA Vision - uses standard OpenAI-compatible image_url format
-async function callNvidiaVision(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
-  const response = await fetch(`${NVIDIA_CONFIG.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
-        { role: 'user', content: [
-          { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
-          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
-        ]},
-      ],
-      temperature: 0.1,
-      max_tokens: 2000,
-      stream: false,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`NVIDIA Vision API error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
 async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string): Promise<string> {
