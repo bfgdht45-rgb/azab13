@@ -278,6 +278,28 @@ function extractJSONFromResponse(content: string): any {
   throw new Error('Could not parse JSON response. Raw content preview: ' + trimmed.substring(0, 300));
 }
 
+// Extract text from Cohere v2 response (handles thinking + text content types)
+function extractCohereV2Text(data: any): string {
+  if (!data || !data.message || !Array.isArray(data.message.content)) {
+    return '';
+  }
+
+  // Look for text content type first
+  const textContent = data.message.content.find((c: any) => c.type === 'text');
+  if (textContent && textContent.text) {
+    return textContent.text;
+  }
+
+  // Fallback: look for thinking content (some models return thinking only)
+  const thinkingContent = data.message.content.find((c: any) => c.type === 'thinking');
+  if (thinkingContent && thinkingContent.thinking) {
+    return thinkingContent.thinking;
+  }
+
+  // Last resort: join all content
+  return data.message.content.map((c: any) => c.text || c.thinking || '').join('');
+}
+
 // =====================================
 // API Object
 // =====================================
@@ -670,11 +692,14 @@ async function callCohereV2(apiKey: string, model: string, prompt: string) {
     throw new Error(`Cohere API error: ${response.status} - ${errorText}`);
   }
   const data = await response.json();
-  // v2 response: data.message.content[0].text
-  const content = data.message?.content?.[0]?.text || '';
+
+  // Extract text from Cohere v2 response (handles thinking + text content types)
+  const content = extractCohereV2Text(data);
+
   if (!content) {
     throw new Error('Cohere returned empty response. Raw data: ' + JSON.stringify(data).substring(0, 500));
   }
+
   return extractJSONFromResponse(content);
 }
 
@@ -710,7 +735,7 @@ async function callCohereV2Vision(apiKey: string, model: string, base64Image: st
     throw new Error(`Cohere Vision API error: ${response.status} - ${errorText}`);
   }
   const data = await response.json();
-  return (data.message?.content?.[0]?.text || '').trim();
+  return extractCohereV2Text(data);
 }
 
 async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string): Promise<string> {
