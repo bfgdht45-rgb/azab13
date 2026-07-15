@@ -78,6 +78,35 @@ const MISTRAL_CONFIG: ProviderConfig = {
   badge: 'جديد',
 };
 
+const COHERE_CONFIG: ProviderConfig = {
+  id: 'cohere',
+  name: 'Cohere',
+  nameAr: 'كوهير',
+  baseUrl: 'https://api.cohere.ai/compatibility/v1',
+  apiKey: '',
+  models: [],
+  preferredModels: [
+    'command-a-plus-05-2026',
+    'command-a-reasoning-08-2025',
+    'command-a-vision-07-2025',
+    'command-a-translate-08-2025',
+    'command-a-03-2025',
+    'c4ai-aya-vision-32b',
+    'c4ai-aya-expanse-32b',
+    'command-r-plus-08-2024',
+    'command-r-08-2024',
+    'command-r7b-arabic-02-2025',
+    'command-r7b-12-2024',
+    'north-mini-code-1-0',
+    'tiny-aya-earth',
+    'tiny-aya-fire',
+    'tiny-aya-global',
+    'tiny-aya-water',
+  ],
+  color: 'bg-gradient-to-br from-purple-600 to-pink-600',
+  badge: 'جديد',
+};
+
 // ✅ نوع الإعدادات المخزنة
 interface StoredConfig {
   apiKey: string;
@@ -89,9 +118,11 @@ interface StoredConfig {
   cerebrasKey: string;
   cometapiKey: string;
   mistralKey: string;
+  cohereKey: string;
   cerebrasModel: string;
   cometapiModel: string;
   mistralModel: string;
+  cohereModel: string;
 }
 
 // =====================================
@@ -110,10 +141,12 @@ function getStoredConfig(): StoredConfig {
     cerebrasKey: localStorage.getItem('mathsolver_cerebras_key') || '',
     cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
     mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
+    cohereKey: localStorage.getItem('mathsolver_cohere_key') || '',
 
     cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
     cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
+    cohereModel: localStorage.getItem('mathsolver_cohere_model') || '',
   };
 }
 
@@ -152,7 +185,7 @@ function selectBestModel(availableModels: string[], preferredModels: string[]): 
 export const mathSolverAPI = {
   hasApiKeys: (): boolean => {
     const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey);
+    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey);
   },
 
   getProviderInfo: () => {
@@ -171,10 +204,13 @@ export const mathSolverAPI = {
     } else if (cfg.provider === 'mistral' && cfg.mistralKey) {
       activeModel = cfg.mistralModel || 'Mistral Auto';
       activeProvider = 'mistral';
+    } else if (cfg.provider === 'cohere' && cfg.cohereKey) {
+      activeModel = cfg.cohereModel || 'Cohere Auto';
+      activeProvider = 'cohere';
     }
 
     return {
-      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey),
+      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey),
       provider: activeProvider,
       model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
@@ -199,11 +235,17 @@ export const mathSolverAPI = {
     return fetchAvailableModels(MISTRAL_CONFIG.baseUrl, cfg.mistralKey);
   },
 
+  fetchCohereModels: async (): Promise<string[]> => {
+    const cfg = getStoredConfig();
+    if (!cfg.cohereKey) return [];
+    return fetchAvailableModels(COHERE_CONFIG.baseUrl, cfg.cohereKey);
+  },
+
   solve: async (request: SolverRequest): Promise<SolverResponse> => {
     const startTime = Date.now();
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
       return {
         success: false,
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح.',
@@ -229,6 +271,11 @@ export const mathSolverAPI = {
         const models = await fetchAvailableModels(MISTRAL_CONFIG.baseUrl, cfg.mistralKey);
         const model = cfg.mistralModel || selectBestModel(models, MISTRAL_CONFIG.preferredModels);
         result = await callOpenAICompatible(cfg.mistralKey, model, MISTRAL_CONFIG.baseUrl, prompt);
+      }
+      else if (cfg.provider === 'cohere' && cfg.cohereKey) {
+        const models = await fetchAvailableModels(COHERE_CONFIG.baseUrl, cfg.cohereKey);
+        const model = cfg.cohereModel || selectBestModel(models, COHERE_CONFIG.preferredModels);
+        result = await callOpenAICompatible(cfg.cohereKey, model, COHERE_CONFIG.baseUrl, prompt);
       }
       else if (cfg.provider === 'baseten' || cfg.baseUrl.includes('baseten')) {
         result = await callBasetenDirect(cfg.apiKey, cfg.model, cfg.baseUrl, prompt);
@@ -275,7 +322,7 @@ export const mathSolverAPI = {
   processImage: async (imageFile: File): Promise<OCRResult> => {
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
       return {
         success: false,
         latex: '',
@@ -324,6 +371,30 @@ export const mathSolverAPI = {
         );
         const model = cfg.mistralModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
         extractedText = await callOpenAIVisionCompatible(cfg.mistralKey, model, MISTRAL_CONFIG.baseUrl, base64Image, mimeType);
+      }
+      else if (cfg.provider === 'cohere' && cfg.cohereKey) {
+        try {
+          const models = await fetchAvailableModels(COHERE_CONFIG.baseUrl, cfg.cohereKey);
+          const visionModels = models.filter((m: string) => 
+            m.includes('vision') || m.includes('aya-vision')
+          );
+          const preferredVision = COHERE_CONFIG.preferredModels.filter(m => 
+            m.includes('vision') || m.includes('aya-vision')
+          );
+          const model = cfg.cohereModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
+          extractedText = await callOpenAIVisionCompatible(cfg.cohereKey, model, COHERE_CONFIG.baseUrl, base64Image, mimeType);
+        } catch (err: any) {
+          if (err.message?.includes('multimodal') || err.message?.includes('403')) {
+            return {
+              success: false,
+              latex: '',
+              confidence: 0,
+              rawText: '',
+              error: 'Cohere: ميزة قراءة الصور (Multimodal) غير مفعلة في حسابك. جرب مزود تاني للصور.',
+            };
+          }
+          throw err;
+        }
       }
       else if (cfg.provider === 'gemini' || cfg.model.includes('gemini')) {
         extractedText = await callGeminiVision(cfg.apiKey, cfg.model, base64Image, mimeType);
