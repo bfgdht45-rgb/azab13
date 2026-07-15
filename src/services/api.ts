@@ -136,12 +136,12 @@ function getStoredConfig(): StoredConfig {
     useCustom: localStorage.getItem('mathsolver_use_custom') === 'true',
 
     cerebrasKey: localStorage.getItem('mathsolver_cerebras_key') || '',
-    morphllmKey: localStorage.getItem('mathsolver_nvidia_key') || '',
+    morphllmKey: localStorage.getItem('mathsolver_morphllm_key') || '',
     cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
     mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
 
     cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
-    morphllmModel: localStorage.getItem('mathsolver_nvidia_model') || '',
+    morphllmModel: localStorage.getItem('mathsolver_morphllm_model') || '',
     cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
   };
@@ -556,6 +556,40 @@ function cleanExtractedText(text: string): string {
     .replace(/```[a-z]*\n?/g, '')
     .replace(/```/g, '')
     .trim();
+}
+
+async function callOpenAICompatible(apiKey: string, model: string, baseUrl: string, prompt: string) {
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.2,
+      max_tokens: 4000,
+    }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API error: ${response.status} - ${errorText}`);
+  }
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  try {
+    return JSON.parse(content);
+  } catch {
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/```\s*([\s\S]*?)```/);
+    if (jsonMatch) return JSON.parse(jsonMatch[1]);
+    const objMatch = content.match(/\{[\s\S]*\}/);
+    if (objMatch) return JSON.parse(objMatch[0]);
+    throw new Error('Could not parse JSON response');
+  }
 }
 
 // =====================================
