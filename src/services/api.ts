@@ -174,34 +174,45 @@ function selectBestModel(availableModels: string[], preferredModels: string[]): 
 async function extractTextWithAnyProvider(base64Image: string, mimeType: string): Promise<{ text: string; usedProvider: string } | null> {
   // Priority: Gemini (free, best for OCR) -> OpenAI -> Baseten -> Mistral -> Cerebras -> CometAPI
 
-  const mainKey = localStorage.getItem('mathsolver_api_key') || '';
-  const mainModel = localStorage.getItem('mathsolver_model') || '';
-  const mainProvider = localStorage.getItem('mathsolver_provider') || '';
+  // Search ALL possible keys for vision-capable providers
+  const allKeys = {
+    // Main provider
+    main: {
+      key: localStorage.getItem('mathsolver_api_key') || '',
+      model: localStorage.getItem('mathsolver_model') || '',
+      provider: localStorage.getItem('mathsolver_provider') || '',
+    },
+    // Check if any saved model/provider indicates Gemini/OpenAI
+    gemini: {
+      key: localStorage.getItem('mathsolver_api_key') || '',
+      model: localStorage.getItem('mathsolver_model') || '',
+      provider: localStorage.getItem('mathsolver_provider') || '',
+    },
+  };
 
-  // Try main provider first if it's vision-capable
-  if (mainKey.trim()) {
-    // Gemini
-    if (mainModel.includes('gemini') || mainProvider === 'gemini') {
-      try {
-        const text = await callGeminiVision(mainKey, mainModel || 'gemini-2.5-flash', base64Image, mimeType);
-        return { text, usedProvider: 'Gemini' };
-      } catch { /* ignore, try next */ }
-    }
-    // OpenAI with vision
-    if (mainModel.includes('gpt-4o') || mainModel.includes('gpt-4') || mainProvider === 'openai') {
-      try {
-        const text = await callOpenAIVision(mainKey, mainModel || 'gpt-4o', base64Image, mimeType);
-        return { text, usedProvider: 'OpenAI' };
-      } catch { /* ignore, try next */ }
-    }
-    // Baseten (some models support vision)
-    if (mainProvider === 'baseten') {
-      try {
-        const baseUrl = localStorage.getItem('mathsolver_base_url') || 'https://inference.baseten.co/v1';
-        const text = await callBasetenVision(mainKey, mainModel, baseUrl, base64Image, mimeType);
-        return { text, usedProvider: 'Baseten' };
-      } catch { /* ignore, try next */ }
-    }
+  // Try Gemini from main provider
+  if (allKeys.gemini.key.trim() && (allKeys.gemini.model.includes('gemini') || allKeys.gemini.provider === 'gemini')) {
+    try {
+      const text = await callGeminiVision(allKeys.gemini.key, allKeys.gemini.model || 'gemini-2.5-flash', base64Image, mimeType);
+      return { text, usedProvider: 'Gemini' };
+    } catch { /* ignore, try next */ }
+  }
+
+  // Try OpenAI from main provider
+  if (allKeys.main.key.trim() && (allKeys.main.model.includes('gpt-4o') || allKeys.main.model.includes('gpt-4') || allKeys.main.provider === 'openai')) {
+    try {
+      const text = await callOpenAIVision(allKeys.main.key, allKeys.main.model || 'gpt-4o', base64Image, mimeType);
+      return { text, usedProvider: 'OpenAI' };
+    } catch { /* ignore, try next */ }
+  }
+
+  // Try Baseten from main provider
+  if (allKeys.main.key.trim() && allKeys.main.provider === 'baseten') {
+    try {
+      const baseUrl = localStorage.getItem('mathsolver_base_url') || 'https://inference.baseten.co/v1';
+      const text = await callBasetenVision(allKeys.main.key, allKeys.main.model, baseUrl, base64Image, mimeType);
+      return { text, usedProvider: 'Baseten' };
+    } catch { /* ignore, try next */ }
   }
 
   // Try additional providers
