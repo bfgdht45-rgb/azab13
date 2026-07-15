@@ -179,6 +179,90 @@ function selectBestModel(availableModels: string[], preferredModels: string[]): 
 }
 
 // =====================================
+// Robust JSON Extraction Helper
+// =====================================
+
+function extractJSONFromResponse(content: string): any {
+  if (!content || typeof content !== 'string') {
+    throw new Error('Empty or invalid response content');
+  }
+
+  const trimmed = content.trim();
+
+  // 1. Try direct JSON parse first
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // continue
+  }
+
+  // 2. Try markdown code blocks: ```json {...} ```
+  const jsonCodeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonCodeBlockMatch) {
+    try {
+      return JSON.parse(jsonCodeBlockMatch[1].trim());
+    } catch {
+      // continue
+    }
+  }
+
+  // 3. Find the first { and last } and try to parse between them
+  const firstBrace = trimmed.indexOf('{');
+  const lastBrace = trimmed.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      const jsonCandidate = trimmed.substring(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonCandidate);
+    } catch {
+      // continue
+    }
+  }
+
+  // 4. Find the first [ and last ] and try to parse between them
+  const firstBracket = trimmed.indexOf('[');
+  const lastBracket = trimmed.lastIndexOf(']');
+  if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+    try {
+      const jsonCandidate = trimmed.substring(firstBracket, lastBracket + 1);
+      return JSON.parse(jsonCandidate);
+    } catch {
+      // continue
+    }
+  }
+
+  // 5. Clean common markdown artifacts and retry
+  const cleaned = trimmed
+    .replace(/```[a-z]*\n?/gi, '')
+    .replace(/```/g, '')
+    .replace(/^(?:Here is|Here\'s|This is|Sure,|Okay,|Alright,).*?\{/s, '{')
+    .replace(/\}[^\}]*$/s, '}')
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // continue
+  }
+
+  // 6. Try finding JSON with regex for nested objects
+  const jsonRegex = /\{[\s\S]*?\}/g;
+  const matches = trimmed.match(jsonRegex);
+  if (matches) {
+    // Try the largest match first (most likely to be the full JSON)
+    const sortedMatches = matches.sort((a, b) => b.length - a.length);
+    for (const match of sortedMatches) {
+      try {
+        return JSON.parse(match);
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  throw new Error('Could not parse JSON response. Raw content preview: ' + trimmed.substring(0, 300));
+}
+
+// =====================================
 // API Object
 // =====================================
 
@@ -519,15 +603,7 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
   }
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content || '';
-  try {
-    return JSON.parse(content);
-  } catch {
-    const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/```\s*([\s\S]*?)```/);
-    if (jsonMatch) return JSON.parse(jsonMatch[1]);
-    const objMatch = content.match(/\{[\s\S]*\}/);
-    if (objMatch) return JSON.parse(objMatch[0]);
-    throw new Error('Could not parse JSON response');
-  }
+  return extractJSONFromResponse(content);
 }
 
 async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string): Promise<string> {
@@ -665,15 +741,7 @@ async function callBasetenDirect(apiKey: string, model: string, baseUrl: string,
   }
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content || '';
-  try {
-    return JSON.parse(content);
-  } catch {
-    const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/```\s*([\s\S]*?)```/);
-    if (jsonMatch) return JSON.parse(jsonMatch[1]);
-    const objMatch = content.match(/\{[\s\S]*\}/);
-    if (objMatch) return JSON.parse(objMatch[0]);
-    throw new Error('Could not parse JSON response');
-  }
+  return extractJSONFromResponse(content);
 }
 
 async function callOpenAIDirect(apiKey: string, model: string, prompt: string) {
@@ -695,7 +763,7 @@ async function callOpenAIDirect(apiKey: string, model: string, prompt: string) {
     }),
   });
   const data = await response.json();
-  return JSON.parse(data.choices[0].message.content);
+  return extractJSONFromResponse(data.choices[0].message.content);
 }
 
 async function callGeminiDirect(apiKey: string, model: string, prompt: string) {
@@ -713,15 +781,7 @@ async function callGeminiDirect(apiKey: string, model: string, prompt: string) {
   });
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  try {
-    return JSON.parse(text);
-  } catch {
-    const jsonMatch = text.match(/```json\s*([\s\S]*?)```/) || text.match(/```\s*([\s\S]*?)```/);
-    if (jsonMatch) return JSON.parse(jsonMatch[1]);
-    const objMatch = text.match(/\{[\s\S]*\}/);
-    if (objMatch) return JSON.parse(objMatch[0]);
-    throw new Error('Could not parse Gemini response');
-  }
+  return extractJSONFromResponse(text);
 }
 
 function buildPrompt(problem: string, subject: string, language: string, detailLevel: string) {
