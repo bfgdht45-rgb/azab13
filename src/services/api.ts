@@ -4,6 +4,22 @@ import type { SolverRequest, SolverResponse, OCRResult, ProviderConfig } from '.
 // ✅ إعدادات المزودين الإضافيين
 // =====================================
 
+const BYNARA_CONFIG: ProviderConfig = {
+  id: 'bynara',
+  name: 'ByNara',
+  nameAr: 'بينارا',
+  baseUrl: 'https://router.bynara.id/v1',
+  apiKey: '',
+  models: [],
+  preferredModels: [
+    'agnes-2.0-flash',
+    'kimi-k2.7-code-free',
+    'mistral-medium-3-5',
+  ],
+  color: 'bg-gradient-to-br from-rose-500 to-pink-600',
+  badge: 'جديد',
+};
+
 const CEREBRAS_CONFIG: ProviderConfig = {
   id: 'cerebras',
   name: 'Cerebras',
@@ -116,10 +132,12 @@ interface StoredConfig {
   baseUrl: string;
   customUrl: string;
   useCustom: boolean;
+  bynaraKey: string;
   cerebrasKey: string;
   cometapiKey: string;
   mistralKey: string;
   cohereKey: string;
+  bynaraModel: string;
   cerebrasModel: string;
   cometapiModel: string;
   mistralModel: string;
@@ -139,11 +157,13 @@ function getStoredConfig(): StoredConfig {
     customUrl: localStorage.getItem('mathsolver_custom_url') || '',
     useCustom: localStorage.getItem('mathsolver_use_custom') === 'true',
 
+    bynaraKey: localStorage.getItem('mathsolver_bynara_key') || '',
     cerebrasKey: localStorage.getItem('mathsolver_cerebras_key') || '',
     cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
     mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
     cohereKey: localStorage.getItem('mathsolver_cohere_key') || '',
 
+    bynaraModel: localStorage.getItem('mathsolver_bynara_model') || '',
     cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
     cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
@@ -308,7 +328,7 @@ function extractCohereV2Text(data: any): string {
 export const mathSolverAPI = {
   hasApiKeys: (): boolean => {
     const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey);
+    return !!(cfg.apiKey || cfg.bynaraKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey);
   },
 
   getProviderInfo: () => {
@@ -318,7 +338,10 @@ export const mathSolverAPI = {
     let activeModel = modelName;
     let activeProvider = cfg.provider;
 
-    if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
+    if (cfg.provider === 'bynara' && cfg.bynaraKey) {
+      activeModel = cfg.bynaraModel || 'ByNara Auto';
+      activeProvider = 'bynara';
+    } else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
       activeModel = cfg.cerebrasModel || 'Cerebras Auto';
       activeProvider = 'cerebras';
     } else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
@@ -336,11 +359,17 @@ export const mathSolverAPI = {
     }
 
     return {
-      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey),
+      hasKeys: !!(cfg.apiKey || cfg.bynaraKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey),
       provider: activeProvider,
       model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
     };
+  },
+
+  fetchBynaraModels: async (): Promise<string[]> => {
+    const cfg = getStoredConfig();
+    if (!cfg.bynaraKey) return [];
+    return fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
   },
 
   fetchCerebrasModels: async (): Promise<string[]> => {
@@ -371,7 +400,7 @@ export const mathSolverAPI = {
     const startTime = Date.now();
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
+    if (!cfg.apiKey && !cfg.bynaraKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
       return {
         success: false,
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح.',
@@ -383,8 +412,14 @@ export const mathSolverAPI = {
       const prompt = buildPrompt(request.problem, request.subject, request.language, request.detailLevel);
       let result;
 
-      // Custom provider (e.g., ByNara) via Custom Base URL
-      if (cfg.useCustom && cfg.customUrl && cfg.apiKey) {
+      // ByNara provider
+      if (cfg.provider === 'bynara' && cfg.bynaraKey) {
+        const models = await fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
+        const model = cfg.bynaraModel || selectBestModel(models, BYNARA_CONFIG.preferredModels);
+        result = await callOpenAICompatible(cfg.bynaraKey, model, BYNARA_CONFIG.baseUrl, prompt);
+      }
+      // Custom provider via Custom Base URL
+      else if (cfg.useCustom && cfg.customUrl && cfg.apiKey) {
         result = await callOpenAICompatible(cfg.apiKey, cfg.model, cfg.customUrl, prompt);
       }
       else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
@@ -474,7 +509,7 @@ export const mathSolverAPI = {
   processImage: async (imageFile: File): Promise<OCRResult> => {
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
+    if (!cfg.apiKey && !cfg.bynaraKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
       return {
         success: false,
         latex: '',
@@ -490,8 +525,14 @@ export const mathSolverAPI = {
       let extractedText = '';
       let confidence = 0.95;
 
-      // Custom provider (e.g., ByNara) via Custom Base URL
-      if (cfg.useCustom && cfg.customUrl && cfg.apiKey) {
+      // ByNara provider
+      if (cfg.provider === 'bynara' && cfg.bynaraKey) {
+        const models = await fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
+        const model = cfg.bynaraModel || selectBestModel(models, BYNARA_CONFIG.preferredModels);
+        extractedText = await callOpenAIVisionCompatible(cfg.bynaraKey, model, BYNARA_CONFIG.baseUrl, base64Image, mimeType);
+      }
+      // Custom provider via Custom Base URL
+      else if (cfg.useCustom && cfg.customUrl && cfg.apiKey) {
         extractedText = await callOpenAIVisionCompatible(cfg.apiKey, cfg.model, cfg.customUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
