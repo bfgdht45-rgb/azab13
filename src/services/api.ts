@@ -711,7 +711,7 @@ function cleanExtractedText(text: string): string {
 // API Calls (مباشرة من غير Proxy)
 // =====================================
 
-// Universal API caller - ByNara uses proxy, others use direct fetch
+// Universal API caller - ByNara uses proxy with fixed payload, others use direct fetch
 async function callAPIUniversal(
   baseUrl: string,
   apiKey: string,
@@ -724,13 +724,26 @@ async function callAPIUniversal(
   // ByNara always goes through proxy (CORS blocked)
   if (isByNara) {
     const proxyUrl = isVision ? '/api/bynara-vision' : '/api/bynara-chat';
+
+    // Fix payload for ByNara - remove unsupported fields
+    const bynaraPayload = {
+      model: payload.model,
+      messages: payload.messages.map((m: any) => ({
+        role: m.role === 'system' ? 'user' : m.role, // ByNara may not support system role
+        content: m.content,
+      })),
+      // Only include temperature and max_tokens if they exist
+      ...(payload.temperature !== undefined && { temperature: payload.temperature }),
+      ...(payload.max_tokens !== undefined && { max_tokens: payload.max_tokens }),
+    };
+
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         apiKey,
         baseUrl,
-        payload,
+        payload: bynaraPayload,
       }),
     });
     if (!response.ok) {
