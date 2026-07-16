@@ -12,9 +12,36 @@ const BYNARA_CONFIG: ProviderConfig = {
   apiKey: '',
   models: [],
   preferredModels: [
-    'agnes-2.0-flash',
-    'kimi-k2.7-code-free',
-    'mistral-medium-3-5',
+    'deepseek-v4-pro-bynara',
+    'deepseek-v4-pro',
+    'deepseek-v4-flash-bynara',
+    'deepseek-v4-flash',
+    'claude-opus-4-8-bynara',
+    'claude-opus-4-7-bynara',
+    'claude-sonnet-5-bynara',
+    'claude-sonnet-5',
+    'claude-opus-4.8',
+    'claude-opus-4.7',
+    'gpt-5.6-sol',
+    'gpt-5.6-terra',
+    'gpt-5.6-luna',
+    'gpt-5.5',
+    'gpt-5.4',
+    'kimi-k2.7-code',
+    'kimi-k2.6',
+    'gemini-3.5-flash',
+    'grok-4.5',
+    'glm-5.2-free',
+    'glm-5.2',
+    'agnes-2.5-flash',
+    'qwen3.7-max',
+    'minimax-m3',
+    'mimo-v2.5-pro',
+    'mimo-v2.5-pro-ultraspeed',
+    'mimo-v2.5-pro-hermes',
+    'mimo-v2.5-hermes',
+    'mimo-v2.5',
+    'claude-fable-5',
   ],
   color: 'bg-gradient-to-br from-rose-500 to-pink-600',
   badge: 'جديد',
@@ -528,7 +555,21 @@ export const mathSolverAPI = {
       // ByNara provider
       if (cfg.provider === 'bynara' && cfg.bynaraKey) {
         const models = await fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
-        const model = cfg.bynaraModel || selectBestModel(models, BYNARA_CONFIG.preferredModels);
+        let model = cfg.bynaraModel || selectBestModel(models, BYNARA_CONFIG.preferredModels);
+
+        // If no model found, try each preferred model
+        if (!model || !models.includes(model)) {
+          for (const preferred of BYNARA_CONFIG.preferredModels) {
+            if (models.includes(preferred)) {
+              model = preferred;
+              break;
+            }
+          }
+        }
+
+        if (!model) {
+          model = models[0] || 'agnes-2.0-flash';
+        }
 
         // Check if model supports vision
         const visionModels = ['pixtral', 'vision', 'gpt-4o', 'claude-3', 'gemini'];
