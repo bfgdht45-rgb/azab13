@@ -529,6 +529,21 @@ export const mathSolverAPI = {
       if (cfg.provider === 'bynara' && cfg.bynaraKey) {
         const models = await fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
         const model = cfg.bynaraModel || selectBestModel(models, BYNARA_CONFIG.preferredModels);
+
+        // Check if model supports vision
+        const visionModels = ['pixtral', 'vision', 'gpt-4o', 'claude-3', 'gemini'];
+        const isVisionModel = visionModels.some(v => model.toLowerCase().includes(v));
+
+        if (!isVisionModel) {
+          return {
+            success: false,
+            latex: '',
+            confidence: 0,
+            rawText: '',
+            error: `الموديل ${model} لا يدعم قراءة الصور. جرب موديل تاني يدعم vision (مثل pixtral, gpt-4o, gemini).`,
+          };
+        }
+
         extractedText = await callOpenAIVisionCompatible(cfg.bynaraKey, model, BYNARA_CONFIG.baseUrl, base64Image, mimeType);
       }
       // Custom provider via Custom Base URL
@@ -708,7 +723,7 @@ async function callAPIUniversal(
 
   // ByNara always goes through proxy (CORS blocked)
   if (isByNara) {
-    const proxyUrl = isVision ? '/api/bynara-vision.js' : '/api/bynara-chat.js';
+    const proxyUrl = isVision ? '/api/bynara-vision' : '/api/bynara-chat';
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
