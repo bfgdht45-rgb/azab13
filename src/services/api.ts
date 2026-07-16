@@ -725,16 +725,18 @@ async function callAPIUniversal(
   if (isByNara) {
     const proxyUrl = isVision ? '/api/bynara-vision' : '/api/bynara-chat';
 
-    // Fix payload for ByNara - remove unsupported fields
+    // Fix payload for ByNara - minimal working payload
+    // ByNara uses OpenAI-compatible API but may have restrictions
     const bynaraPayload = {
       model: payload.model,
-      messages: payload.messages.map((m: any) => ({
-        role: m.role === 'system' ? 'user' : m.role, // ByNara may not support system role
-        content: m.content,
-      })),
-      // Only include temperature and max_tokens if they exist
-      ...(payload.temperature !== undefined && { temperature: payload.temperature }),
-      ...(payload.max_tokens !== undefined && { max_tokens: payload.max_tokens }),
+      messages: [
+        {
+          role: 'user',
+          content: typeof payload.messages[0]?.content === 'string' 
+            ? payload.messages[0].content + '\n\n' + (payload.messages[1]?.content || '')
+            : JSON.stringify(payload.messages)
+        }
+      ],
     };
 
     const response = await fetch(proxyUrl, {
