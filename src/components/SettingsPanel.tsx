@@ -128,6 +128,16 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     color: 'bg-gradient-to-br from-purple-600 to-pink-600',
     badge: 'جديد',
   },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    nameAr: 'أوبن راوتر',
+    keyStorage: 'mathsolver_openrouter_key',
+    modelStorage: 'mathsolver_openrouter_model',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    color: 'bg-gradient-to-br from-slate-500 to-gray-700',
+    badge: 'مجاني',
+  },
 ];
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
@@ -144,10 +154,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [cometapiKey, setCometapiKey] = useState('');
   const [mistralKey, setMistralKey] = useState('');
   const [cohereKey, setCohereKey] = useState('');
+  const [openrouterKey, setOpenrouterKey] = useState('');
   const [showCerebrasKey, setShowCerebrasKey] = useState(false);
   const [showCometapiKey, setShowCometapiKey] = useState(false);
   const [showMistralKey, setShowMistralKey] = useState(false);
   const [showCohereKey, setShowCohereKey] = useState(false);
+  const [showOpenrouterKey, setShowOpenrouterKey] = useState(false);
 
   useEffect(() => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
@@ -164,6 +176,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setCometapiKey(localStorage.getItem('mathsolver_cometapi_key') || '');
     setMistralKey(localStorage.getItem('mathsolver_mistral_key') || '');
     setCohereKey(localStorage.getItem('mathsolver_cohere_key') || '');
+    setOpenrouterKey(localStorage.getItem('mathsolver_openrouter_key') || '');
 
     const info = getActiveConfig();
     setActiveConfig(info);
@@ -176,9 +189,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     const hasCometapi = !!(localStorage.getItem('mathsolver_cometapi_key') || '').trim();
     const hasMistral = !!(localStorage.getItem('mathsolver_mistral_key') || '').trim();
     const hasCohere = !!(localStorage.getItem('mathsolver_cohere_key') || '').trim();
+    const hasOpenrouter = !!(localStorage.getItem('mathsolver_openrouter_key') || '').trim();
     return { 
       model: savedModel, 
-      hasKey: !!savedKey.trim() || hasCerebras || hasCometapi || hasMistral || hasCohere 
+      hasKey: !!savedKey.trim() || hasCerebras || hasCometapi || hasMistral || hasCohere || hasOpenrouter 
     };
   };
 
@@ -192,6 +206,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     localStorage.setItem('mathsolver_cometapi_key', cometapiKey);
     localStorage.setItem('mathsolver_mistral_key', mistralKey);
     localStorage.setItem('mathsolver_cohere_key', cohereKey);
+    localStorage.setItem('mathsolver_openrouter_key', openrouterKey);
 
     const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
     if (model) {
@@ -206,13 +221,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       localStorage.setItem('mathsolver_provider', 'cometapi');
     } else if (mistralKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !cohereKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'mistral');
-    } else if (cohereKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim()) {
+    } else if (cohereKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !openrouterKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cohere');
+    } else if (openrouterKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
+      localStorage.setItem('mathsolver_provider', 'openrouter');
     }
 
     setActiveConfig({ 
       model: selectedModel, 
-      hasKey: !!apiKey.trim() || !!cerebrasKey.trim() || !!cometapiKey.trim() || !!mistralKey.trim() || !!cohereKey.trim() 
+      hasKey: !!apiKey.trim() || !!cerebrasKey.trim() || !!cometapiKey.trim() || !!mistralKey.trim() || !!cohereKey.trim() || !!openrouterKey.trim() 
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -252,6 +269,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'cometapi': return 'Co';
       case 'mistral': return 'Ms';
       case 'cohere': return 'Ch';
+      case 'openrouter': return 'OR';
       default: return id.substring(0, 2).toUpperCase();
     }
   };
@@ -467,21 +485,25 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 provider.id === 'cerebras' ? cerebrasKey : 
                 provider.id === 'cometapi' ? cometapiKey :
                 provider.id === 'cohere' ? cohereKey :
+                provider.id === 'openrouter' ? openrouterKey :
                 mistralKey;
               const setKeyValue = 
                 provider.id === 'cerebras' ? setCerebrasKey : 
                 provider.id === 'cometapi' ? setCometapiKey :
                 provider.id === 'cohere' ? setCohereKey :
+                provider.id === 'openrouter' ? setOpenrouterKey :
                 setMistralKey;
               const showKeyValue = 
                 provider.id === 'cerebras' ? showCerebrasKey : 
                 provider.id === 'cometapi' ? showCometapiKey :
                 provider.id === 'cohere' ? showCohereKey :
+                provider.id === 'openrouter' ? showOpenrouterKey :
                 showMistralKey;
               const setShowKeyValue = 
                 provider.id === 'cerebras' ? setShowCerebrasKey : 
                 provider.id === 'cometapi' ? setShowCometapiKey :
                 provider.id === 'cohere' ? setShowCohereKey :
+                provider.id === 'openrouter' ? setShowOpenrouterKey :
                 setShowMistralKey;
               const hasKey = !!keyValue.trim();
 
