@@ -139,13 +139,11 @@ function getStoredConfig(): StoredConfig {
     customUrl: localStorage.getItem('mathsolver_custom_url') || '',
     useCustom: localStorage.getItem('mathsolver_use_custom') === 'true',
 
-    bynaraKey: localStorage.getItem('mathsolver_bynara_key') || '',
     cerebrasKey: localStorage.getItem('mathsolver_cerebras_key') || '',
     cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
     mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
     cohereKey: localStorage.getItem('mathsolver_cohere_key') || '',
 
-    bynaraModel: localStorage.getItem('mathsolver_bynara_model') || '',
     cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
     cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
@@ -385,14 +383,8 @@ export const mathSolverAPI = {
       const prompt = buildPrompt(request.problem, request.subject, request.language, request.detailLevel);
       let result;
 
-      // ByNara provider
-      if (cfg.provider === 'bynara' && cfg.bynaraKey) {
-        const models = await fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
-        const model = cfg.bynaraModel || selectBestModel(models, BYNARA_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.bynaraKey, model, BYNARA_CONFIG.baseUrl, prompt);
-      }
       // Custom provider via Custom Base URL
-      else if (cfg.useCustom && cfg.customUrl && cfg.apiKey) {
+      if (cfg.useCustom && cfg.customUrl && cfg.apiKey) {
         result = await callOpenAICompatible(cfg.apiKey, cfg.model, cfg.customUrl, prompt);
       }
       else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
@@ -663,7 +655,6 @@ function cleanExtractedText(text: string): string {
 // API Calls (مباشرة من غير Proxy)
 // =====================================
 
-// Universal API caller - ByNara uses proxy with fixed payload, others use direct fetch
 async function callAPIUniversal(
   baseUrl: string,
   apiKey: string,
@@ -671,43 +662,7 @@ async function callAPIUniversal(
   isVision: boolean = false
 ): Promise<any> {
   const url = `${baseUrl}/chat/completions`;
-  const isByNara = baseUrl.includes('bynara.id');
-
-  // ByNara always goes through proxy (CORS blocked)
-  if (isByNara) {
-    const proxyUrl = isVision ? '/api/bynara-vision' : '/api/bynara-chat';
-
-    // Fix payload for ByNara - minimal working payload
-    // ByNara uses OpenAI-compatible API but may have restrictions
-    const bynaraPayload = {
-      model: payload.model,
-      messages: [
-        {
-          role: 'user',
-          content: typeof payload.messages[0]?.content === 'string' 
-            ? payload.messages[0].content + '\n\n' + (payload.messages[1]?.content || '')
-            : JSON.stringify(payload.messages)
-        }
-      ],
-    };
-
-    const response = await fetch(proxyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        apiKey,
-        baseUrl,
-        payload: bynaraPayload,
-      }),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`ByNara proxy error: ${response.status} - ${errorText}`);
-    }
-    return await response.json();
-  }
-
-  // All other providers: direct fetch (they have CORS enabled)
+  // All providers: direct fetch
   const response = await fetch(url, {
     method: 'POST',
     headers: {
