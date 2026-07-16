@@ -1,17 +1,12 @@
-export const config = {
-  runtime: 'edge',
-};
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default async function handler(request: Request) {
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { apiKey, baseUrl, payload } = await request.json();
+    const { apiKey, baseUrl, payload } = req.body;
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -23,14 +18,8 @@ export default async function handler(request: Request) {
     });
 
     const data = await response.json();
-    return new Response(JSON.stringify(data), {
-      status: response.status,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    res.status(response.status).json(data);
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message || 'Proxy failed' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    res.status(500).json({ error: error.message || 'Proxy failed' });
   }
 }
