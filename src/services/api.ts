@@ -696,28 +696,81 @@ function cleanExtractedText(text: string): string {
 // API Calls (مباشرة من غير Proxy)
 // =====================================
 
-async function callOpenAICompatible(apiKey: string, model: string, baseUrl: string, prompt: string) {
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.2,
-      max_tokens: 4000,
-    }),
-  });
-  if (!response.ok) {
+// Universal API caller with CORS workarounds
+async function callAPIUniversal(
+  baseUrl: string,
+  apiKey: string,
+  payload: any,
+  isVision: boolean = false
+): Promise<any> {
+  const url = `${baseUrl}/chat/completions`;
+
+  // Try 1: Standard fetch with credentials: 'omit' (helps with some CORS issues)
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'omit',
+      body: JSON.stringify(payload),
+    });
+    if (response.ok) {
+      return await response.json();
+    }
     const errorText = await response.text();
-    throw new Error(`API error: ${response.status} - ${errorText}`);
+    throw new Error(`HTTP ${response.status}: ${errorText}`);
+  } catch (fetchErr: any) {
+    // If it's not a CORS/network error, throw immediately
+    if (!fetchErr.message?.includes('Failed to fetch') &&
+        !fetchErr.message?.includes('NetworkError') &&
+        !fetchErr.message?.includes('CORS') &&
+        !fetchErr.message?.includes('Network request failed')) {
+      throw fetchErr;
+    }
+    console.warn('Fetch failed, trying XMLHttpRequest...', fetchErr.message);
   }
-  const data = await response.json();
+
+  // Try 2: XMLHttpRequest (sometimes works when fetch doesn't due to CORS)
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Authorization', `Bearer ${apiKey}`);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.timeout = 60000;
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error('Invalid JSON response'));
+        }
+      } else {
+        reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('XMLHttpRequest failed - CORS blocked'));
+    xhr.ontimeout = () => reject(new Error('Request timeout'));
+
+    xhr.send(JSON.stringify(payload));
+  });
+}
+
+async function callOpenAICompatible(apiKey: string, model: string, baseUrl: string, prompt: string) {
+  const payload = {
+    model: model,
+    messages: [
+      { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.2,
+    max_tokens: 4000,
+  };
+
+  const data = await callAPIUniversal(baseUrl, apiKey, payload);
   const content = data.choices?.[0]?.message?.content || '';
   return extractJSONFromResponse(content);
 }
@@ -748,30 +801,20 @@ CRITICAL RULES - FOLLOW EXACTLY:
     ? 'Extract the mathematical expression from this image as pure LaTeX. Be extremely careful with every symbol, operator, and notation. Output ONLY the LaTeX code.'
     : 'Extract the mathematical equation from this image as pure LaTeX:';
 
-  const response = await fetch(`${MISTRAL_CONFIG.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: [
-          { type: 'text', text: userPrompt },
-          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
-        ]},
-      ],
-      temperature: isStrictMode ? 0.0 : 0.1,
-      max_tokens: 2000,
-    }),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Mistral Vision API error: ${response.status} - ${errorText}`);
-  }
-  const data = await response.json();
+  const payload = {
+    model: model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: [
+        { type: 'text', text: userPrompt },
+        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
+      ]},
+    ],
+    temperature: isStrictMode ? 0.0 : 0.1,
+    max_tokens: 2000,
+  };
+
+  const data = await callAPIUniversal(MISTRAL_CONFIG.baseUrl, apiKey, payload, true);
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
@@ -848,30 +891,20 @@ async function callCohereV2Vision(apiKey: string, model: string, base64Image: st
 }
 
 async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl: string, base64Image: string, mimeType: string): Promise<string> {
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
-        { role: 'user', content: [
-          { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
-          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
-        ]},
-      ],
-      temperature: 0.1,
-      max_tokens: 2000,
-    }),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Vision API error: ${response.status} - ${errorText}`);
-  }
-  const data = await response.json();
+  const payload = {
+    model: model,
+    messages: [
+      { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+      { role: 'user', content: [
+        { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
+        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
+      ]},
+    ],
+    temperature: 0.1,
+    max_tokens: 2000,
+  };
+
+  const data = await callAPIUniversal(baseUrl, apiKey, payload, true);
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
