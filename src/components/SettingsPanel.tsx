@@ -89,16 +89,6 @@ const AVAILABLE_MODELS: ModelConfig[] = [
 
 const NEW_PROVIDERS: NewProviderConfig[] = [
   {
-    id: 'bynara',
-    name: 'ByNara',
-    nameAr: 'بينارا',
-    keyStorage: 'mathsolver_bynara_key',
-    modelStorage: 'mathsolver_bynara_model',
-    baseUrl: 'https://router.bynara.id/v1',
-    color: 'bg-gradient-to-br from-rose-500 to-pink-600',
-    badge: 'جديد',
-  },
-  {
     id: 'cerebras',
     name: 'Cerebras',
     nameAr: 'سيريبراس',
@@ -150,12 +140,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [activeConfig, setActiveConfig] = useState<{model: string; hasKey: boolean}>({model: '', hasKey: false});
 
   // New provider keys
-  const [bynaraKey, setBynaraKey] = useState('');
   const [cerebrasKey, setCerebrasKey] = useState('');
   const [cometapiKey, setCometapiKey] = useState('');
   const [mistralKey, setMistralKey] = useState('');
   const [cohereKey, setCohereKey] = useState('');
-  const [showBynaraKey, setShowBynaraKey] = useState(false);
   const [showCerebrasKey, setShowCerebrasKey] = useState(false);
   const [showCometapiKey, setShowCometapiKey] = useState(false);
   const [showMistralKey, setShowMistralKey] = useState(false);
@@ -172,7 +160,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setCustomBaseUrl(savedCustomUrl);
     setUseCustomUrl(savedUseCustom);
 
-    setBynaraKey(localStorage.getItem('mathsolver_bynara_key') || '');
     setCerebrasKey(localStorage.getItem('mathsolver_cerebras_key') || '');
     setCometapiKey(localStorage.getItem('mathsolver_cometapi_key') || '');
     setMistralKey(localStorage.getItem('mathsolver_mistral_key') || '');
@@ -185,14 +172,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const getActiveConfig = () => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
     const savedModel = localStorage.getItem('mathsolver_model') || '';
-    const hasBynara = !!(localStorage.getItem('mathsolver_bynara_key') || '').trim();
     const hasCerebras = !!(localStorage.getItem('mathsolver_cerebras_key') || '').trim();
     const hasCometapi = !!(localStorage.getItem('mathsolver_cometapi_key') || '').trim();
     const hasMistral = !!(localStorage.getItem('mathsolver_mistral_key') || '').trim();
     const hasCohere = !!(localStorage.getItem('mathsolver_cohere_key') || '').trim();
     return { 
       model: savedModel, 
-      hasKey: !!savedKey.trim() || hasBynara || hasCerebras || hasCometapi || hasMistral || hasCohere 
+      hasKey: !!savedKey.trim() || hasCerebras || hasCometapi || hasMistral || hasCohere 
     };
   };
 
@@ -202,7 +188,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     localStorage.setItem('mathsolver_custom_url', customBaseUrl);
     localStorage.setItem('mathsolver_use_custom', useCustomUrl.toString());
 
-    localStorage.setItem('mathsolver_bynara_key', bynaraKey);
     localStorage.setItem('mathsolver_cerebras_key', cerebrasKey);
     localStorage.setItem('mathsolver_cometapi_key', cometapiKey);
     localStorage.setItem('mathsolver_mistral_key', mistralKey);
@@ -215,21 +200,19 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
 
     // Priority: first non-empty key sets the provider
-    if (bynaraKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
-      localStorage.setItem('mathsolver_provider', 'bynara');
-    } else if (cerebrasKey.trim() && !bynaraKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
+    if (cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cerebras');
-    } else if (cometapiKey.trim() && !bynaraKey.trim() && !cerebrasKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
+    } else if (cometapiKey.trim() && !cerebrasKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cometapi');
-    } else if (mistralKey.trim() && !bynaraKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !cohereKey.trim()) {
+    } else if (mistralKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !cohereKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'mistral');
-    } else if (cohereKey.trim() && !bynaraKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim()) {
+    } else if (cohereKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cohere');
     }
 
     setActiveConfig({ 
       model: selectedModel, 
-      hasKey: !!apiKey.trim() || !!bynaraKey.trim() || !!cerebrasKey.trim() || !!cometapiKey.trim() || !!mistralKey.trim() || !!cohereKey.trim() 
+      hasKey: !!apiKey.trim() || !!cerebrasKey.trim() || !!cometapiKey.trim() || !!mistralKey.trim() || !!cohereKey.trim() 
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -242,7 +225,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'baseten': return 'Baseten Inference';
       case 'openai': return 'OpenAI';
       case 'gemini': return 'Google AI Studio';
-      case 'bynara': return 'ByNara';
       case 'cerebras': return 'Cerebras';
       case 'cometapi': return 'CometAPI';
       case 'mistral': return 'Mistral AI';
@@ -256,7 +238,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'baseten': return 'https://www.baseten.co/';
       case 'openai': return 'https://platform.openai.com/api-keys';
       case 'gemini': return 'https://aistudio.google.com/app/apikey';
-      case 'bynara': return 'https://bynara.id/';
       case 'cerebras': return 'https://cloud.cerebras.ai/';
       case 'cometapi': return 'https://cometapi.com/';
       case 'mistral': return 'https://console.mistral.ai/api-keys/';
@@ -267,7 +248,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   const getProviderInitials = (id: string) => {
     switch(id) {
-      case 'bynara': return 'By';
       case 'cerebras': return 'Ce';
       case 'cometapi': return 'Co';
       case 'mistral': return 'Ms';
@@ -365,6 +345,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           <div className="space-y-3">
+            <h3 className="font-bold text-gray-800 flex items-center gap-2">
+              <Zap size={18} />
+              مزود مخصص (Custom Provider)
+            </h3>
+
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -376,16 +361,43 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             </label>
 
             {useCustomUrl && (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={customBaseUrl}
-                  onChange={(e) => setCustomBaseUrl(e.target.value)}
-                  placeholder="https://inference.baseten.co/v1"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
-                  dir="ltr"
-                />
-                <p className="text-xs text-gray-500">للاستخدام مع أي مزود OpenAI-compatible</p>
+              <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">رابط الـ API</label>
+                  <input
+                    type="text"
+                    value={customBaseUrl}
+                    onChange={(e) => setCustomBaseUrl(e.target.value)}
+                    placeholder="https://router.bynara.id/v1"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
+                    dir="ltr"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    مثال: <code className="bg-gray-200 px-1 rounded">https://router.bynara.id/v1</code> — لأي مزود OpenAI-compatible
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">اسم الموديل</label>
+                  <input
+                    type="text"
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    placeholder="mistral-medium-3-5"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
+                    dir="ltr"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    مثال: <code className="bg-gray-200 px-1 rounded">mistral-medium-3-5</code> أو <code className="bg-gray-200 px-1 rounded">agnes-2.0-flash</code>
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+                  <Info size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-blue-700">
+                    💡 <strong>ByNara:</strong> ادخل الرابط <code>https://router.bynara.id/v1</code> والموديل <code>mistral-medium-3-5</code> أو <code>agnes-2.0-flash</code>
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -395,7 +407,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               <Key size={18} className="text-gray-600" />
               <h3 className="font-bold text-gray-800">مفتاح API</h3>
               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                {getProviderLabel(selectedModelConfig?.provider || 'baseten')}
+                {useCustomUrl ? 'Custom' : getProviderLabel(selectedModelConfig?.provider || 'baseten')}
               </span>
             </div>
 
@@ -405,6 +417,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={
+                  useCustomUrl ? 'sk-xxx... (مفتاح المزود المخصص)' :
                   selectedModelConfig?.provider === 'baseten' ? 'baseten-api-key-xxx' : 
                   selectedModelConfig?.provider === 'openai' ? 'sk-xxxxxxxxxxxxxxxx' : 
                   'AIzaSyxxxxxxxxxxxxxxxx'
@@ -420,25 +433,27 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </button>
             </div>
 
-            {selectedModelConfig && (
+            {selectedModelConfig && !useCustomUrl && (
               <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 space-y-1">
                 <p><strong>المزود:</strong> {getProviderLabel(selectedModelConfig.provider)}</p>
-                <p><strong>الرابط:</strong> <code className="bg-gray-200 px-1 rounded">{useCustomUrl && customBaseUrl ? customBaseUrl : selectedModelConfig.baseUrl}</code></p>
+                <p><strong>الرابط:</strong> <code className="bg-gray-200 px-1 rounded">{selectedModelConfig.baseUrl}</code></p>
                 <p><strong>الموديل:</strong> <code className="bg-gray-200 px-1 rounded">{selectedModelConfig.id}</code></p>
               </div>
             )}
 
-            <p className="text-xs text-gray-500">
-              احصل على المفتاح من:{" "}
-              <a 
-                href={getProviderLink(selectedModelConfig?.provider || 'baseten')} 
-                target="_blank" 
-                className="text-primary-600 hover:underline font-medium" 
-                rel="noreferrer"
-              >
-                {getProviderLink(selectedModelConfig?.provider || 'baseten').replace('https://', '')}
-              </a>
-            </p>
+            {!useCustomUrl && (
+              <p className="text-xs text-gray-500">
+                احصل على المفتاح من:{" "}
+                <a 
+                  href={getProviderLink(selectedModelConfig?.provider || 'baseten')} 
+                  target="_blank" 
+                  className="text-primary-600 hover:underline font-medium" 
+                  rel="noreferrer"
+                >
+                  {getProviderLink(selectedModelConfig?.provider || 'baseten').replace('https://', '')}
+                </a>
+              </p>
+            )}
           </div>
 
           <div className="space-y-4 border-t border-gray-200 pt-6">
@@ -449,25 +464,21 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
             {NEW_PROVIDERS.map((provider) => {
               const keyValue = 
-                provider.id === 'bynara' ? bynaraKey : 
                 provider.id === 'cerebras' ? cerebrasKey : 
                 provider.id === 'cometapi' ? cometapiKey :
                 provider.id === 'cohere' ? cohereKey :
                 mistralKey;
               const setKeyValue = 
-                provider.id === 'bynara' ? setBynaraKey : 
                 provider.id === 'cerebras' ? setCerebrasKey : 
                 provider.id === 'cometapi' ? setCometapiKey :
                 provider.id === 'cohere' ? setCohereKey :
                 setMistralKey;
               const showKeyValue = 
-                provider.id === 'bynara' ? showBynaraKey : 
                 provider.id === 'cerebras' ? showCerebrasKey : 
                 provider.id === 'cometapi' ? showCometapiKey :
                 provider.id === 'cohere' ? showCohereKey :
                 showMistralKey;
               const setShowKeyValue = 
-                provider.id === 'bynara' ? setShowBynaraKey : 
                 provider.id === 'cerebras' ? setShowCerebrasKey : 
                 provider.id === 'cometapi' ? setShowCometapiKey :
                 provider.id === 'cohere' ? setShowCohereKey :
