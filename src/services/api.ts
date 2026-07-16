@@ -696,7 +696,7 @@ function cleanExtractedText(text: string): string {
 // API Calls (مباشرة من غير Proxy)
 // =====================================
 
-// Universal API caller with CORS workarounds
+// Universal API caller - ByNara uses proxy, others use direct fetch
 async function callAPIUniversal(
   baseUrl: string,
   apiKey: string,
@@ -704,59 +704,41 @@ async function callAPIUniversal(
   isVision: boolean = false
 ): Promise<any> {
   const url = `${baseUrl}/chat/completions`;
+  const isByNara = baseUrl.includes('bynara.id');
 
-  // Try 1: Standard fetch with credentials: 'omit' (helps with some CORS issues)
-  try {
-    const response = await fetch(url, {
+  // ByNara always goes through proxy (CORS blocked)
+  if (isByNara) {
+    const proxyUrl = isVision ? '/api/bynara-vision' : '/api/bynara-chat';
+    const response = await fetch(proxyUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      credentials: 'omit',
-      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        baseUrl,
+        payload,
+      }),
     });
-    if (response.ok) {
-      return await response.json();
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`ByNara proxy error: ${response.status} - ${errorText}`);
     }
-    const errorText = await response.text();
-    throw new Error(`HTTP ${response.status}: ${errorText}`);
-  } catch (fetchErr: any) {
-    // If it's not a CORS/network error, throw immediately
-    if (!fetchErr.message?.includes('Failed to fetch') &&
-        !fetchErr.message?.includes('NetworkError') &&
-        !fetchErr.message?.includes('CORS') &&
-        !fetchErr.message?.includes('Network request failed')) {
-      throw fetchErr;
-    }
-    console.warn('Fetch failed, trying XMLHttpRequest...', fetchErr.message);
+    return await response.json();
   }
 
-  // Try 2: XMLHttpRequest (sometimes works when fetch doesn't due to CORS)
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', url, true);
-    xhr.setRequestHeader('Authorization', `Bearer ${apiKey}`);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.timeout = 60000;
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          resolve(JSON.parse(xhr.responseText));
-        } catch {
-          reject(new Error('Invalid JSON response'));
-        }
-      } else {
-        reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('XMLHttpRequest failed - CORS blocked'));
-    xhr.ontimeout = () => reject(new Error('Request timeout'));
-
-    xhr.send(JSON.stringify(payload));
+  // All other providers: direct fetch (they have CORS enabled)
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
   });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API error: ${response.status} - ${errorText}`);
+  }
+  return await response.json();
 }
 
 async function callOpenAICompatible(apiKey: string, model: string, baseUrl: string, prompt: string) {
