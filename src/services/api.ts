@@ -4,22 +4,6 @@ import type { SolverRequest, SolverResponse, OCRResult, ProviderConfig } from '.
 // ✅ إعدادات المزودين الإضافيين
 // =====================================
 
-const BYNARA_CONFIG: ProviderConfig = {
-  id: 'bynara',
-  name: 'ByNara',
-  nameAr: 'بينارا',
-  baseUrl: 'https://router.bynara.id/v1',
-  apiKey: '',
-  models: [],
-  preferredModels: [
-    'agnes-2.0-flash',
-    'kimi-k2.7-code-free',
-    'mistral-medium-3-5',
-  ],
-  color: 'bg-gradient-to-br from-rose-500 to-pink-600',
-  badge: 'جديد',
-};
-
 const CEREBRAS_CONFIG: ProviderConfig = {
   id: 'cerebras',
   name: 'Cerebras',
@@ -132,12 +116,10 @@ interface StoredConfig {
   baseUrl: string;
   customUrl: string;
   useCustom: boolean;
-  bynaraKey: string;
   cerebrasKey: string;
   cometapiKey: string;
   mistralKey: string;
   cohereKey: string;
-  bynaraModel: string;
   cerebrasModel: string;
   cometapiModel: string;
   mistralModel: string;
@@ -328,7 +310,7 @@ function extractCohereV2Text(data: any): string {
 export const mathSolverAPI = {
   hasApiKeys: (): boolean => {
     const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.bynaraKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey);
+    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey);
   },
 
   getProviderInfo: () => {
@@ -338,10 +320,7 @@ export const mathSolverAPI = {
     let activeModel = modelName;
     let activeProvider = cfg.provider;
 
-    if (cfg.provider === 'bynara' && cfg.bynaraKey) {
-      activeModel = cfg.bynaraModel || 'ByNara Auto';
-      activeProvider = 'bynara';
-    } else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
+    if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
       activeModel = cfg.cerebrasModel || 'Cerebras Auto';
       activeProvider = 'cerebras';
     } else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
@@ -359,17 +338,11 @@ export const mathSolverAPI = {
     }
 
     return {
-      hasKeys: !!(cfg.apiKey || cfg.bynaraKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey),
+      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey),
       provider: activeProvider,
       model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
     };
-  },
-
-  fetchBynaraModels: async (): Promise<string[]> => {
-    const cfg = getStoredConfig();
-    if (!cfg.bynaraKey) return [];
-    return fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
   },
 
   fetchCerebrasModels: async (): Promise<string[]> => {
@@ -400,7 +373,7 @@ export const mathSolverAPI = {
     const startTime = Date.now();
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.bynaraKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
       return {
         success: false,
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح.',
@@ -509,7 +482,7 @@ export const mathSolverAPI = {
   processImage: async (imageFile: File): Promise<OCRResult> => {
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.bynaraKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
       return {
         success: false,
         latex: '',
@@ -525,14 +498,8 @@ export const mathSolverAPI = {
       let extractedText = '';
       let confidence = 0.95;
 
-      // ByNara provider
-      if (cfg.provider === 'bynara' && cfg.bynaraKey) {
-        const models = await fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
-        const model = cfg.bynaraModel || selectBestModel(models, BYNARA_CONFIG.preferredModels);
-        extractedText = await callOpenAIVisionCompatible(cfg.bynaraKey, model, BYNARA_CONFIG.baseUrl, base64Image, mimeType);
-      }
       // Custom provider via Custom Base URL
-      else if (cfg.useCustom && cfg.customUrl && cfg.apiKey) {
+      if (cfg.useCustom && cfg.customUrl && cfg.apiKey) {
         extractedText = await callOpenAIVisionCompatible(cfg.apiKey, cfg.model, cfg.customUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
@@ -696,7 +663,7 @@ function cleanExtractedText(text: string): string {
 // API Calls (مباشرة من غير Proxy)
 // =====================================
 
-// Universal API caller with CORS workarounds
+// Universal API caller - ByNara uses proxy with fixed payload, others use direct fetch
 async function callAPIUniversal(
   baseUrl: string,
   apiKey: string,
@@ -704,59 +671,56 @@ async function callAPIUniversal(
   isVision: boolean = false
 ): Promise<any> {
   const url = `${baseUrl}/chat/completions`;
+  const isByNara = baseUrl.includes('bynara.id');
 
-  // Try 1: Standard fetch with credentials: 'omit' (helps with some CORS issues)
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      credentials: 'omit',
-      body: JSON.stringify(payload),
-    });
-    if (response.ok) {
-      return await response.json();
-    }
-    const errorText = await response.text();
-    throw new Error(`HTTP ${response.status}: ${errorText}`);
-  } catch (fetchErr: any) {
-    // If it's not a CORS/network error, throw immediately
-    if (!fetchErr.message?.includes('Failed to fetch') &&
-        !fetchErr.message?.includes('NetworkError') &&
-        !fetchErr.message?.includes('CORS') &&
-        !fetchErr.message?.includes('Network request failed')) {
-      throw fetchErr;
-    }
-    console.warn('Fetch failed, trying XMLHttpRequest...', fetchErr.message);
-  }
+  // ByNara always goes through proxy (CORS blocked)
+  if (isByNara) {
+    const proxyUrl = isVision ? '/api/bynara-vision' : '/api/bynara-chat';
 
-  // Try 2: XMLHttpRequest (sometimes works when fetch doesn't due to CORS)
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', url, true);
-    xhr.setRequestHeader('Authorization', `Bearer ${apiKey}`);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.timeout = 60000;
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          resolve(JSON.parse(xhr.responseText));
-        } catch {
-          reject(new Error('Invalid JSON response'));
+    // Fix payload for ByNara - minimal working payload
+    // ByNara uses OpenAI-compatible API but may have restrictions
+    const bynaraPayload = {
+      model: payload.model,
+      messages: [
+        {
+          role: 'user',
+          content: typeof payload.messages[0]?.content === 'string' 
+            ? payload.messages[0].content + '\n\n' + (payload.messages[1]?.content || '')
+            : JSON.stringify(payload.messages)
         }
-      } else {
-        reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
-      }
+      ],
     };
 
-    xhr.onerror = () => reject(new Error('XMLHttpRequest failed - CORS blocked'));
-    xhr.ontimeout = () => reject(new Error('Request timeout'));
+    const response = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        baseUrl,
+        payload: bynaraPayload,
+      }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`ByNara proxy error: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
 
-    xhr.send(JSON.stringify(payload));
+  // All other providers: direct fetch (they have CORS enabled)
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
   });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API error: ${response.status} - ${errorText}`);
+  }
+  return await response.json();
 }
 
 async function callOpenAICompatible(apiKey: string, model: string, baseUrl: string, prompt: string) {
