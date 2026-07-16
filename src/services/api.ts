@@ -108,6 +108,32 @@ const COHERE_CONFIG: ProviderConfig = {
   badge: 'جديد',
 };
 
+const OPENROUTER_CONFIG: ProviderConfig = {
+  id: 'openrouter',
+  name: 'OpenRouter',
+  nameAr: 'أوبن راوتر',
+  baseUrl: 'https://openrouter.ai/api/v1',
+  apiKey: '',
+  models: [],
+  preferredModels: [
+    'deepseek/deepseek-chat',
+    'deepseek/deepseek-r1',
+    'anthropic/claude-3.5-sonnet',
+    'anthropic/claude-3-opus',
+    'meta-llama/llama-3.3-70b-instruct',
+    'meta-llama/llama-3.1-405b-instruct',
+    'google/gemini-2.5-flash',
+    'google/gemini-2.5-pro',
+    'openai/gpt-4o',
+    'openai/gpt-4o-mini',
+    'qwen/qwen-2.5-72b-instruct',
+    'mistralai/mistral-large',
+    'x-ai/grok-2',
+  ],
+  color: 'bg-gradient-to-br from-slate-500 to-gray-700',
+  badge: 'مجاني',
+};
+
 // ✅ نوع الإعدادات المخزنة
 interface StoredConfig {
   apiKey: string;
@@ -120,10 +146,12 @@ interface StoredConfig {
   cometapiKey: string;
   mistralKey: string;
   cohereKey: string;
+  openrouterKey: string;
   cerebrasModel: string;
   cometapiModel: string;
   mistralModel: string;
   cohereModel: string;
+  openrouterModel: string;
 }
 
 // =====================================
@@ -143,8 +171,10 @@ function getStoredConfig(): StoredConfig {
     cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
     mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
     cohereKey: localStorage.getItem('mathsolver_cohere_key') || '',
+    openrouterKey: localStorage.getItem('mathsolver_openrouter_key') || '',
 
     cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
+    openrouterModel: localStorage.getItem('mathsolver_openrouter_model') || '',
     cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
     cohereModel: localStorage.getItem('mathsolver_cohere_model') || '',
@@ -308,7 +338,7 @@ function extractCohereV2Text(data: any): string {
 export const mathSolverAPI = {
   hasApiKeys: (): boolean => {
     const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey);
+    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey || cfg.openrouterKey);
   },
 
   getProviderInfo: () => {
@@ -330,13 +360,16 @@ export const mathSolverAPI = {
     } else if (cfg.provider === 'cohere' && cfg.cohereKey) {
       activeModel = cfg.cohereModel || 'Cohere Auto';
       activeProvider = 'cohere';
+    } else if (cfg.provider === 'openrouter' && cfg.openrouterKey) {
+      activeModel = cfg.openrouterModel || 'OpenRouter Auto';
+      activeProvider = 'openrouter';
     } else if (cfg.useCustom && cfg.customUrl) {
       activeProvider = 'custom';
       activeModel = cfg.model;
     }
 
     return {
-      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey),
+      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey || cfg.openrouterKey),
       provider: activeProvider,
       model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
@@ -367,11 +400,17 @@ export const mathSolverAPI = {
     return fetchCohereModels(cfg.cohereKey);
   },
 
+  fetchOpenrouterModels: async (): Promise<string[]> => {
+    const cfg = getStoredConfig();
+    if (!cfg.openrouterKey) return [];
+    return fetchAvailableModels(OPENROUTER_CONFIG.baseUrl, cfg.openrouterKey);
+  },
+
   solve: async (request: SolverRequest): Promise<SolverResponse> => {
     const startTime = Date.now();
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey && !cfg.openrouterKey) {
       return {
         success: false,
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح.',
@@ -406,6 +445,11 @@ export const mathSolverAPI = {
         const models = await fetchCohereModels(cfg.cohereKey);
         const model = cfg.cohereModel || selectBestModel(models, COHERE_CONFIG.preferredModels);
         result = await callCohereV2(cfg.cohereKey, model, prompt);
+      }
+      else if (cfg.provider === 'openrouter' && cfg.openrouterKey) {
+        const models = await fetchAvailableModels(OPENROUTER_CONFIG.baseUrl, cfg.openrouterKey);
+        const model = cfg.openrouterModel || selectBestModel(models, OPENROUTER_CONFIG.preferredModels);
+        result = await callOpenAICompatible(cfg.openrouterKey, model, OPENROUTER_CONFIG.baseUrl, prompt);
       }
       else if (cfg.provider === 'baseten' || cfg.baseUrl.includes('baseten')) {
         result = await callBasetenDirect(cfg.apiKey, cfg.model, cfg.baseUrl, prompt);
@@ -474,7 +518,7 @@ export const mathSolverAPI = {
   processImage: async (imageFile: File): Promise<OCRResult> => {
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey && !cfg.openrouterKey) {
       return {
         success: false,
         latex: '',
@@ -554,6 +598,17 @@ export const mathSolverAPI = {
           }
           throw err;
         }
+      }
+      else if (cfg.provider === 'openrouter' && cfg.openrouterKey) {
+        const models = await fetchAvailableModels(OPENROUTER_CONFIG.baseUrl, cfg.openrouterKey);
+        const visionModels = models.filter((m: string) => 
+          m.includes('vision') || m.includes('gpt-4o') || m.includes('claude-3') || m.includes('gemini')
+        );
+        const preferredVision = OPENROUTER_CONFIG.preferredModels.filter(m => 
+          m.includes('vision') || m.includes('gpt-4o') || m.includes('claude-3') || m.includes('gemini')
+        );
+        const model = cfg.openrouterModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
+        extractedText = await callOpenAIVisionCompatible(cfg.openrouterKey, model, OPENROUTER_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'gemini' || cfg.model.includes('gemini')) {
         extractedText = await callGeminiVision(cfg.apiKey, cfg.model, base64Image, mimeType);
