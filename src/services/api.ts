@@ -708,7 +708,7 @@ async function callAPIUniversal(
 
   // ByNara always goes through proxy (CORS blocked)
   if (isByNara) {
-    const proxyUrl = isVision ? '/api/bynara-vision' : '/api/bynara-chat';
+    const proxyUrl = isVision ? '/api/bynara-vision.js' : '/api/bynara-chat.js';
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
