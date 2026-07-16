@@ -89,6 +89,16 @@ const AVAILABLE_MODELS: ModelConfig[] = [
 
 const NEW_PROVIDERS: NewProviderConfig[] = [
   {
+    id: 'bynara',
+    name: 'ByNara',
+    nameAr: 'بينارا',
+    keyStorage: 'mathsolver_bynara_key',
+    modelStorage: 'mathsolver_bynara_model',
+    baseUrl: 'https://router.bynara.id/v1',
+    color: 'bg-gradient-to-br from-rose-500 to-pink-600',
+    badge: 'جديد',
+  },
+  {
     id: 'cerebras',
     name: 'Cerebras',
     nameAr: 'سيريبراس',
@@ -140,10 +150,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [activeConfig, setActiveConfig] = useState<{model: string; hasKey: boolean}>({model: '', hasKey: false});
 
   // New provider keys
+  const [bynaraKey, setBynaraKey] = useState('');
   const [cerebrasKey, setCerebrasKey] = useState('');
   const [cometapiKey, setCometapiKey] = useState('');
   const [mistralKey, setMistralKey] = useState('');
   const [cohereKey, setCohereKey] = useState('');
+  const [showBynaraKey, setShowBynaraKey] = useState(false);
   const [showCerebrasKey, setShowCerebrasKey] = useState(false);
   const [showCometapiKey, setShowCometapiKey] = useState(false);
   const [showMistralKey, setShowMistralKey] = useState(false);
@@ -160,6 +172,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setCustomBaseUrl(savedCustomUrl);
     setUseCustomUrl(savedUseCustom);
 
+    setBynaraKey(localStorage.getItem('mathsolver_bynara_key') || '');
     setCerebrasKey(localStorage.getItem('mathsolver_cerebras_key') || '');
     setCometapiKey(localStorage.getItem('mathsolver_cometapi_key') || '');
     setMistralKey(localStorage.getItem('mathsolver_mistral_key') || '');
@@ -172,13 +185,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const getActiveConfig = () => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
     const savedModel = localStorage.getItem('mathsolver_model') || '';
+    const hasBynara = !!(localStorage.getItem('mathsolver_bynara_key') || '').trim();
     const hasCerebras = !!(localStorage.getItem('mathsolver_cerebras_key') || '').trim();
     const hasCometapi = !!(localStorage.getItem('mathsolver_cometapi_key') || '').trim();
     const hasMistral = !!(localStorage.getItem('mathsolver_mistral_key') || '').trim();
     const hasCohere = !!(localStorage.getItem('mathsolver_cohere_key') || '').trim();
     return { 
       model: savedModel, 
-      hasKey: !!savedKey.trim() || hasCerebras || hasCometapi || hasMistral || hasCohere 
+      hasKey: !!savedKey.trim() || hasBynara || hasCerebras || hasCometapi || hasMistral || hasCohere 
     };
   };
 
@@ -188,6 +202,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     localStorage.setItem('mathsolver_custom_url', customBaseUrl);
     localStorage.setItem('mathsolver_use_custom', useCustomUrl.toString());
 
+    localStorage.setItem('mathsolver_bynara_key', bynaraKey);
     localStorage.setItem('mathsolver_cerebras_key', cerebrasKey);
     localStorage.setItem('mathsolver_cometapi_key', cometapiKey);
     localStorage.setItem('mathsolver_mistral_key', mistralKey);
@@ -200,19 +215,21 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
 
     // Priority: first non-empty key sets the provider
-    if (cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
+    if (bynaraKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
+      localStorage.setItem('mathsolver_provider', 'bynara');
+    } else if (cerebrasKey.trim() && !bynaraKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cerebras');
-    } else if (cometapiKey.trim() && !cerebrasKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
+    } else if (cometapiKey.trim() && !bynaraKey.trim() && !cerebrasKey.trim() && !mistralKey.trim() && !cohereKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cometapi');
-    } else if (mistralKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !cohereKey.trim()) {
+    } else if (mistralKey.trim() && !bynaraKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !cohereKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'mistral');
-    } else if (cohereKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim()) {
+    } else if (cohereKey.trim() && !bynaraKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cohere');
     }
 
     setActiveConfig({ 
       model: selectedModel, 
-      hasKey: !!apiKey.trim() || !!cerebrasKey.trim() || !!cometapiKey.trim() || !!mistralKey.trim() || !!cohereKey.trim() 
+      hasKey: !!apiKey.trim() || !!bynaraKey.trim() || !!cerebrasKey.trim() || !!cometapiKey.trim() || !!mistralKey.trim() || !!cohereKey.trim() 
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -248,6 +265,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   const getProviderInitials = (id: string) => {
     switch(id) {
+      case 'bynara': return 'By';
       case 'cerebras': return 'Ce';
       case 'cometapi': return 'Co';
       case 'mistral': return 'Ms';
@@ -464,21 +482,25 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
             {NEW_PROVIDERS.map((provider) => {
               const keyValue = 
+                provider.id === 'bynara' ? bynaraKey : 
                 provider.id === 'cerebras' ? cerebrasKey : 
                 provider.id === 'cometapi' ? cometapiKey :
                 provider.id === 'cohere' ? cohereKey :
                 mistralKey;
               const setKeyValue = 
+                provider.id === 'bynara' ? setBynaraKey : 
                 provider.id === 'cerebras' ? setCerebrasKey : 
                 provider.id === 'cometapi' ? setCometapiKey :
                 provider.id === 'cohere' ? setCohereKey :
                 setMistralKey;
               const showKeyValue = 
+                provider.id === 'bynara' ? showBynaraKey : 
                 provider.id === 'cerebras' ? showCerebrasKey : 
                 provider.id === 'cometapi' ? showCometapiKey :
                 provider.id === 'cohere' ? showCohereKey :
                 showMistralKey;
               const setShowKeyValue = 
+                provider.id === 'bynara' ? setShowBynaraKey : 
                 provider.id === 'cerebras' ? setShowCerebrasKey : 
                 provider.id === 'cometapi' ? setShowCometapiKey :
                 provider.id === 'cohere' ? setShowCohereKey :
