@@ -1,24 +1,8 @@
 import type { SolverRequest, SolverResponse, OCRResult, ProviderConfig } from '../types';
 
 // =====================================
-// ✅ إعدادات المزودين
+// ✅ إعدادات المزودين الإضافيين
 // =====================================
-
-const BYNARA_CONFIG: ProviderConfig = {
-  id: 'bynara',
-  name: 'ByNara',
-  nameAr: 'بينارا',
-  baseUrl: 'https://router.bynara.id/v1',
-  apiKey: '',
-  models: [],
-  preferredModels: [
-    'agnes-2.0-flash',
-    'kimi-k2.7-code-free',
-    'mistral-medium-3-5',
-  ],
-  color: 'bg-gradient-to-br from-rose-500 to-pink-600',
-  badge: 'جديد',
-};
 
 const CEREBRAS_CONFIG: ProviderConfig = {
   id: 'cerebras',
@@ -132,12 +116,10 @@ interface StoredConfig {
   baseUrl: string;
   customUrl: string;
   useCustom: boolean;
-  bynaraKey: string;
   cerebrasKey: string;
   cometapiKey: string;
   mistralKey: string;
   cohereKey: string;
-  bynaraModel: string;
   cerebrasModel: string;
   cometapiModel: string;
   mistralModel: string;
@@ -157,13 +139,11 @@ function getStoredConfig(): StoredConfig {
     customUrl: localStorage.getItem('mathsolver_custom_url') || '',
     useCustom: localStorage.getItem('mathsolver_use_custom') === 'true',
 
-    bynaraKey: localStorage.getItem('mathsolver_bynara_key') || '',
     cerebrasKey: localStorage.getItem('mathsolver_cerebras_key') || '',
     cometapiKey: localStorage.getItem('mathsolver_cometapi_key') || '',
     mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
     cohereKey: localStorage.getItem('mathsolver_cohere_key') || '',
 
-    bynaraModel: localStorage.getItem('mathsolver_bynara_model') || '',
     cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
     cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
@@ -328,7 +308,7 @@ function extractCohereV2Text(data: any): string {
 export const mathSolverAPI = {
   hasApiKeys: (): boolean => {
     const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.bynaraKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey);
+    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey);
   },
 
   getProviderInfo: () => {
@@ -338,10 +318,7 @@ export const mathSolverAPI = {
     let activeModel = modelName;
     let activeProvider = cfg.provider;
 
-    if (cfg.provider === 'bynara' && cfg.bynaraKey) {
-      activeModel = cfg.bynaraModel || 'ByNara Auto';
-      activeProvider = 'bynara';
-    } else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
+    if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
       activeModel = cfg.cerebrasModel || 'Cerebras Auto';
       activeProvider = 'cerebras';
     } else if (cfg.provider === 'cometapi' && cfg.cometapiKey) {
@@ -353,20 +330,17 @@ export const mathSolverAPI = {
     } else if (cfg.provider === 'cohere' && cfg.cohereKey) {
       activeModel = cfg.cohereModel || 'Cohere Auto';
       activeProvider = 'cohere';
+    } else if (cfg.useCustom && cfg.customUrl) {
+      activeProvider = 'custom';
+      activeModel = cfg.model;
     }
 
     return {
-      hasKeys: !!(cfg.apiKey || cfg.bynaraKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey),
+      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey),
       provider: activeProvider,
       model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
     };
-  },
-
-  fetchBynaraModels: async (): Promise<string[]> => {
-    const cfg = getStoredConfig();
-    if (!cfg.bynaraKey) return [];
-    return fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
   },
 
   fetchCerebrasModels: async (): Promise<string[]> => {
@@ -397,7 +371,7 @@ export const mathSolverAPI = {
     const startTime = Date.now();
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.bynaraKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
       return {
         success: false,
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح.',
@@ -409,10 +383,9 @@ export const mathSolverAPI = {
       const prompt = buildPrompt(request.problem, request.subject, request.language, request.detailLevel);
       let result;
 
-      if (cfg.provider === 'bynara' && cfg.bynaraKey) {
-        const models = await fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
-        const model = cfg.bynaraModel || selectBestModel(models, BYNARA_CONFIG.preferredModels);
-        result = await callOpenAICompatible(cfg.bynaraKey, model, BYNARA_CONFIG.baseUrl, prompt);
+      // Custom provider (e.g., ByNara) via Custom Base URL
+      if (cfg.useCustom && cfg.customUrl && cfg.apiKey) {
+        result = await callOpenAICompatible(cfg.apiKey, cfg.model, cfg.customUrl, prompt);
       }
       else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
         const models = await fetchAvailableModels(CEREBRAS_CONFIG.baseUrl, cfg.cerebrasKey);
@@ -501,7 +474,7 @@ export const mathSolverAPI = {
   processImage: async (imageFile: File): Promise<OCRResult> => {
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.bynaraKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey) {
       return {
         success: false,
         latex: '',
@@ -517,10 +490,9 @@ export const mathSolverAPI = {
       let extractedText = '';
       let confidence = 0.95;
 
-      if (cfg.provider === 'bynara' && cfg.bynaraKey) {
-        const models = await fetchAvailableModels(BYNARA_CONFIG.baseUrl, cfg.bynaraKey);
-        const model = cfg.bynaraModel || selectBestModel(models, BYNARA_CONFIG.preferredModels);
-        extractedText = await callBynaraVision(cfg.bynaraKey, model, base64Image, mimeType);
+      // Custom provider (e.g., ByNara) via Custom Base URL
+      if (cfg.useCustom && cfg.customUrl && cfg.apiKey) {
+        extractedText = await callOpenAIVisionCompatible(cfg.apiKey, cfg.model, cfg.customUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'cerebras' && cfg.cerebrasKey) {
         try {
@@ -693,7 +665,7 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
@@ -709,35 +681,6 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
   return extractJSONFromResponse(content);
 }
 
-// ByNara Vision - uses OpenAI-compatible vision endpoint
-async function callBynaraVision(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
-  const response = await fetch(`${BYNARA_CONFIG.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
-        { role: 'user', content: [
-          { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
-          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
-        ]},
-      ],
-      temperature: 0.1,
-      max_tokens: 2000,
-    }),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`ByNara Vision API error: ${response.status} - ${errorText}`);
-  }
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content?.trim() || '';
-}
-
 // Mistral Vision - with strict prompt for mistral-medium-3-5
 async function callMistralVision(apiKey: string, model: string, base64Image: string, mimeType: string, isStrictMode: boolean = false): Promise<string> {
   const systemPrompt = isStrictMode
@@ -745,20 +688,20 @@ async function callMistralVision(apiKey: string, model: string, base64Image: str
 
 CRITICAL RULES - FOLLOW EXACTLY:
 1. Read EVERY symbol, number, operator, and variable carefully
-2. For integrals: Use \int for single, \iint for double, \iiint for triple integrals
-3. For derivatives: Use \frac{d}{dx} or \frac{\partial}{\partial x} for partial derivatives
-4. For limits: Use \lim_{x \to a} format exactly
-5. For summation: Use \sum_{i=1}^{n} format
-6. For fractions: Use \frac{numerator}{denominator}
+2. For integrals: Use \\int for single, \\iint for double, \\iiint for triple integrals
+3. For derivatives: Use \\frac{d}{dx} or \\frac{\\partial}{\\partial x} for partial derivatives
+4. For limits: Use \\lim_{x \\to a} format exactly
+5. For summation: Use \\sum_{i=1}^{n} format
+6. For fractions: Use \\frac{numerator}{denominator}
 7. For exponents: Use ^{} for superscripts, _{} for subscripts
-8. For Greek letters: Use \alpha, \beta, \gamma, \delta, \theta, \pi, \sigma, etc.
-9. For matrices: Use \begin{pmatrix} ... \end{pmatrix}
-10. For square roots: Use \sqrt{} or \sqrt[n]{}
+8. For Greek letters: Use \\alpha, \\beta, \\gamma, \\delta, \\theta, \\pi, \\sigma, etc.
+9. For matrices: Use \\begin{pmatrix} ... \\end{pmatrix}
+10. For square roots: Use \\sqrt{} or \\sqrt[n]{}
 11. NEVER guess - if unclear, output [UNCLEAR] for that part
 12. Output ONLY the LaTeX expression, nothing else
 13. NO explanations, NO markdown, NO text outside LaTeX
 14. Verify each symbol before outputting`
-    : 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.';
+    : 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.';
 
   const userPrompt = isStrictMode
     ? 'Extract the mathematical expression from this image as pure LaTeX. Be extremely careful with every symbol, operator, and notation. Output ONLY the LaTeX code.'
@@ -804,7 +747,7 @@ async function callCohereV2(apiKey: string, model: string, prompt: string) {
       messages: [
         { 
           role: 'system', 
-          content: 'You are an expert mathematics teacher. You MUST solve problems step by step with detailed explanations. You MUST respond in valid JSON format only. Use PURE LaTeX for equations (NO \text{} or \mbox{}). Example: \int x^4 dx = \frac{x^5}{5}. Do not include any text outside the JSON. No markdown code blocks. Just raw JSON.' 
+          content: 'You are an expert mathematics teacher. You MUST solve problems step by step with detailed explanations. You MUST respond in valid JSON format only. Use PURE LaTeX for equations (NO \\text{} or \\mbox{}). Example: \\int x^4 dx = \\frac{x^5}{5}. Do not include any text outside the JSON. No markdown code blocks. Just raw JSON.' 
         },
         { role: 'user', content: prompt },
       ],
@@ -841,7 +784,7 @@ async function callCohereV2Vision(apiKey: string, model: string, base64Image: st
       messages: [
         { 
           role: 'system', 
-          content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}. Return only the LaTeX, no explanation.' 
+          content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}. Return only the LaTeX, no explanation.' 
         },
         { 
           role: 'user', 
@@ -873,7 +816,7 @@ async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
@@ -902,7 +845,7 @@ async function callGeminiVision(apiKey: string, model: string, base64Image: stri
         contents: [{
           role: 'user',
           parts: [
-            { text: 'You are an expert OCR system for mathematical equations. Look at this image and extract ALL mathematical text. Return ONLY the mathematical expression in PURE LaTeX format. Do NOT use \text{} or \mbox{}. Do NOT add any explanation, just the raw LaTeX.' },
+            { text: 'You are an expert OCR system for mathematical equations. Look at this image and extract ALL mathematical text. Return ONLY the mathematical expression in PURE LaTeX format. Do NOT use \\text{} or \\mbox{}. Do NOT add any explanation, just the raw LaTeX.' },
             { inlineData: { mimeType: mimeType, data: base64Image } },
           ],
         }],
@@ -929,7 +872,7 @@ async function callOpenAIVision(apiKey: string, model: string, base64Image: stri
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } },
@@ -957,7 +900,7 @@ async function callBasetenVision(apiKey: string, model: string, baseUrl: string,
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
@@ -985,7 +928,7 @@ async function callBasetenDirect(apiKey: string, model: string, baseUrl: string,
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
@@ -1011,7 +954,7 @@ async function callOpenAIDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       response_format: { type: 'json_object' },
@@ -1031,7 +974,7 @@ async function callGeminiDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       contents: [{ 
         role: 'user', 
-        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' }] 
+        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' }] 
       }],
       generationConfig: { temperature: 0.2, maxOutputTokens: 4000 },
     }),
@@ -1064,9 +1007,9 @@ Problem: ${problem}
 CRITICAL RULES:
 - Language: ${isAr ? 'Arabic' : 'English'}
 - Detail level: ${detailMap[detailLevel] || 'step-by-step'}
-- Use PURE LaTeX for equations (NO \text{} or \mbox{} wrappers)
-- Example good equation: \int x^4 dx = \frac{x^5}{5}
-- Example bad equation: \text{integral of } x^4 \text{ is } \frac{x^5}{5}
+- Use PURE LaTeX for equations (NO \\text{} or \\mbox{} wrappers)
+- Example good equation: \\int x^4 dx = \\frac{x^5}{5}
+- Example bad equation: \\text{integral of } x^4 \\text{ is } \\frac{x^5}{5}
 - Show all mathematical steps clearly
 - Include the name of each rule/law used
 - Verify the final answer
