@@ -684,7 +684,7 @@ async function callCohereV2(apiKey: string, model: string, prompt: string) {
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
-      max_tokens: 4000,
+      max_tokens: 8000,
     }),
   });
   if (!response.ok) {
