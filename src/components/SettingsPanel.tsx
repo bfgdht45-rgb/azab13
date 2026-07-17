@@ -161,6 +161,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [showCohereKey, setShowCohereKey] = useState(false);
   const [showOpenrouterKey, setShowOpenrouterKey] = useState(false);
 
+  // ✅ New: OpenRouter model state
+  const [openrouterModel, setOpenrouterModel] = useState('');
+
   useEffect(() => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
     const savedModel = localStorage.getItem('mathsolver_model') || 'deepseek-ai/DeepSeek-V4-Pro';
@@ -177,6 +180,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setMistralKey(localStorage.getItem('mathsolver_mistral_key') || '');
     setCohereKey(localStorage.getItem('mathsolver_cohere_key') || '');
     setOpenrouterKey(localStorage.getItem('mathsolver_openrouter_key') || '');
+
+    // ✅ New: Load openrouterModel from localStorage
+    setOpenrouterModel(localStorage.getItem('mathsolver_openrouter_model') || '');
 
     const info = getActiveConfig();
     setActiveConfig(info);
@@ -207,6 +213,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     localStorage.setItem('mathsolver_mistral_key', mistralKey);
     localStorage.setItem('mathsolver_cohere_key', cohereKey);
     localStorage.setItem('mathsolver_openrouter_key', openrouterKey);
+
+    // ✅ New: Save openrouterModel to localStorage
+    localStorage.setItem('mathsolver_openrouter_model', openrouterModel);
 
     const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
     if (model) {
@@ -551,6 +560,23 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       {showKeyValue ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+
+                  {/* ✅ New: OpenRouter Model Input */}
+                  {provider.id === 'openrouter' && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        value={openrouterModel}
+                        onChange={(e) => setOpenrouterModel(e.target.value)}
+                        placeholder="اسم الموديل (مثال: deepseek/deepseek-chat)"
+                        className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
+                        dir="ltr"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        اتركه فارغاً لاستخدام الموديل الافتراضي
+                      </p>
+                    </div>
+                  )}
 
                   <p className="text-xs text-gray-500 mt-2">
                     احصل على المفتاح من:{" "}
