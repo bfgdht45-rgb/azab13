@@ -835,7 +835,7 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
   return extractJSONFromResponse(content);
 }
 
-// ✅ NEW: Groq API call - with reasoning_format: "hidden" to suppress thinking blocks
+// ✅ NEW: Groq API call - cleans thinking blocks from response
 async function callGroq(apiKey: string, model: string, prompt: string) {
   const payload = {
     model: model,
@@ -845,14 +845,12 @@ async function callGroq(apiKey: string, model: string, prompt: string) {
     ],
     temperature: 0.2,
     max_tokens: 4000,
-    // ✅ Hide reasoning/thinking blocks from response
-    reasoning_format: 'hidden',
   };
 
   const data = await callAPIUniversal(GROQ_CONFIG.baseUrl, apiKey, payload);
-  const content = data.choices?.[0]?.message?.content || '';
-  // ✅ Also clean any remaining thinking blocks as fallback
-  const cleanedContent = cleanThinkingBlocks(content);
+  const rawContent = data.choices?.[0]?.message?.content || '';
+  // ✅ Clean thinking blocks from response
+  const cleanedContent = cleanThinkingBlocks(rawContent);
   return extractJSONFromResponse(cleanedContent);
 }
 
@@ -869,14 +867,12 @@ async function callGroqVision(apiKey: string, model: string, base64Image: string
     ],
     temperature: 0.1,
     max_tokens: 2000,
-    // ✅ Hide reasoning/thinking blocks from response
-    reasoning_format: 'hidden',
   };
 
   const data = await callAPIUniversal(GROQ_CONFIG.baseUrl, apiKey, payload, true);
-  const content = data.choices?.[0]?.message?.content?.trim() || '';
-  // ✅ Also clean any remaining thinking blocks as fallback
-  return cleanThinkingBlocks(content);
+  const rawContent = data.choices?.[0]?.message?.content?.trim() || '';
+  // ✅ Clean thinking blocks from response
+  return cleanThinkingBlocks(rawContent);
 }
 
 // Mistral Vision - with strict prompt for mistral-medium-3-5
