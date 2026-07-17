@@ -134,6 +134,36 @@ const OPENROUTER_CONFIG: ProviderConfig = {
   badge: 'مجاني',
 };
 
+// ✅ NEW: Groq Provider Config
+const GROQ_CONFIG: ProviderConfig = {
+  id: 'groq',
+  name: 'Groq',
+  nameAr: 'جروك',
+  baseUrl: 'https://api.groq.com/openai/v1',
+  apiKey: '',
+  models: [],
+  preferredModels: [
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'meta-llama/llama-4-maverick-17b-128e-instruct',
+    'meta-llama/llama-3.3-70b-versatile',
+    'meta-llama/llama-3.1-8b-instant',
+    'llama-3.2-11b-vision-preview',
+    'llama-3.2-90b-vision-preview',
+    'llama-3.2-3b-preview',
+    'llama-3.2-1b-preview',
+    'mixtral-8x7b-32768',
+    'gemma2-9b-it',
+    'gemma-7b-it',
+    'qwen-qwq-32b',
+    'deepseek-r1-distill-qwen-32b',
+    'deepseek-r1-distill-llama-70b',
+    'openai/gpt-oss-120b',
+    'openai/gpt-oss-20b',
+  ],
+  color: 'bg-gradient-to-br from-red-500 to-pink-600',
+  badge: 'سريع ⚡',
+};
+
 // ✅ نوع الإعدادات المخزنة
 interface StoredConfig {
   apiKey: string;
@@ -147,11 +177,13 @@ interface StoredConfig {
   mistralKey: string;
   cohereKey: string;
   openrouterKey: string;
+  groqKey: string;
   cerebrasModel: string;
   cometapiModel: string;
   mistralModel: string;
   cohereModel: string;
   openrouterModel: string;
+  groqModel: string;
 }
 
 // =====================================
@@ -172,12 +204,14 @@ function getStoredConfig(): StoredConfig {
     mistralKey: localStorage.getItem('mathsolver_mistral_key') || '',
     cohereKey: localStorage.getItem('mathsolver_cohere_key') || '',
     openrouterKey: localStorage.getItem('mathsolver_openrouter_key') || '',
+    groqKey: localStorage.getItem('mathsolver_groq_key') || '',
 
     cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
     openrouterModel: localStorage.getItem('mathsolver_openrouter_model') || '',
     cometapiModel: localStorage.getItem('mathsolver_cometapi_model') || '',
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
     cohereModel: localStorage.getItem('mathsolver_cohere_model') || '',
+    groqModel: localStorage.getItem('mathsolver_groq_model') || '',
   };
 }
 
@@ -230,12 +264,36 @@ function selectBestModel(availableModels: string[], preferredModels: string[]): 
 // Robust JSON Extraction Helper
 // =====================================
 
+// ✅ NEW: Clean thinking/reasoning blocks from content
+function cleanThinkingBlocks(content: string): string {
+  if (!content || typeof content !== 'string') return content;
+
+  // Remove <thinking>...</thinking> tags (Groq raw reasoning format)
+  let cleaned = content.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+
+  // Remove <reasoning>...</reasoning> tags
+  cleaned = cleaned.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '');
+
+  // Remove content between triple backticks with "thinking" language
+  cleaned = cleaned.replace(/```thinking[\s\S]*?```/gi, '');
+
+  // Remove standalone "thinking" blocks that some models use
+  cleaned = cleaned.replace(/Thinking:[\s\S]*?(?=\n\n|\n[A-Z]|$)/gi, '');
+
+  // Clean up extra whitespace
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+
+  return cleaned;
+}
+
 function extractJSONFromResponse(content: string): any {
   if (!content || typeof content !== 'string') {
     throw new Error('Empty or invalid response content');
   }
 
-  const trimmed = content.trim();
+  // ✅ Clean thinking blocks first
+  const cleanedContent = cleanThinkingBlocks(content);
+  const trimmed = cleanedContent.trim();
 
   // 1. Try direct JSON parse first
   try {
@@ -282,7 +340,7 @@ function extractJSONFromResponse(content: string): any {
   const cleaned = trimmed
     .replace(/```[a-z]*\n?/gi, '')
     .replace(/```/g, '')
-    .replace(/^(?:Here is|Here's|This is|Sure,|Okay,|Alright,|Of course|Certainly).*?\{/s, '{')
+    .replace(/^(?:Here is|Here\'s|This is|Sure,|Okay,|Alright,|Of course|Certainly).*?\{/s, '{')
     .replace(/\}[^}]*$/s, '}')
     .trim();
 
@@ -338,7 +396,7 @@ function extractCohereV2Text(data: any): string {
 export const mathSolverAPI = {
   hasApiKeys: (): boolean => {
     const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey || cfg.openrouterKey);
+    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey || cfg.openrouterKey || cfg.groqKey);
   },
 
   getProviderInfo: () => {
@@ -363,13 +421,16 @@ export const mathSolverAPI = {
     } else if (cfg.provider === 'openrouter' && cfg.openrouterKey) {
       activeModel = cfg.openrouterModel || 'OpenRouter Auto';
       activeProvider = 'openrouter';
+    } else if (cfg.provider === 'groq' && cfg.groqKey) {
+      activeModel = cfg.groqModel || 'Groq Auto';
+      activeProvider = 'groq';
     } else if (cfg.useCustom && cfg.customUrl) {
       activeProvider = 'custom';
       activeModel = cfg.model;
     }
 
     return {
-      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey || cfg.openrouterKey),
+      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey || cfg.openrouterKey || cfg.groqKey),
       provider: activeProvider,
       model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
@@ -406,11 +467,18 @@ export const mathSolverAPI = {
     return fetchAvailableModels(OPENROUTER_CONFIG.baseUrl, cfg.openrouterKey);
   },
 
+  // ✅ NEW: Fetch Groq models
+  fetchGroqModels: async (): Promise<string[]> => {
+    const cfg = getStoredConfig();
+    if (!cfg.groqKey) return [];
+    return fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
+  },
+
   solve: async (request: SolverRequest): Promise<SolverResponse> => {
     const startTime = Date.now();
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey && !cfg.openrouterKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey && !cfg.openrouterKey && !cfg.groqKey) {
       return {
         success: false,
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح.',
@@ -450,6 +518,12 @@ export const mathSolverAPI = {
         const models = await fetchAvailableModels(OPENROUTER_CONFIG.baseUrl, cfg.openrouterKey);
         const model = cfg.openrouterModel || selectBestModel(models, OPENROUTER_CONFIG.preferredModels);
         result = await callOpenAICompatible(cfg.openrouterKey, model, OPENROUTER_CONFIG.baseUrl, prompt);
+      }
+      // ✅ NEW: Groq provider
+      else if (cfg.provider === 'groq' && cfg.groqKey) {
+        const models = await fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
+        const model = cfg.groqModel || selectBestModel(models, GROQ_CONFIG.preferredModels);
+        result = await callGroq(cfg.groqKey, model, prompt);
       }
       else if (cfg.provider === 'baseten' || cfg.baseUrl.includes('baseten')) {
         result = await callBasetenDirect(cfg.apiKey, cfg.model, cfg.baseUrl, prompt);
@@ -518,7 +592,7 @@ export const mathSolverAPI = {
   processImage: async (imageFile: File): Promise<OCRResult> => {
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey && !cfg.openrouterKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey && !cfg.openrouterKey && !cfg.groqKey) {
       return {
         success: false,
         latex: '',
@@ -609,6 +683,18 @@ export const mathSolverAPI = {
         );
         const model = cfg.openrouterModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
         extractedText = await callOpenAIVisionCompatible(cfg.openrouterKey, model, OPENROUTER_CONFIG.baseUrl, base64Image, mimeType);
+      }
+      // ✅ NEW: Groq Vision
+      else if (cfg.provider === 'groq' && cfg.groqKey) {
+        const models = await fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
+        const visionModels = models.filter((m: string) => 
+          m.includes('vision') || m.includes('llama-3.2') || m.includes('llama-4')
+        );
+        const preferredVision = GROQ_CONFIG.preferredModels.filter(m => 
+          m.includes('vision') || m.includes('llama-3.2') || m.includes('llama-4')
+        );
+        const model = cfg.groqModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
+        extractedText = await callGroqVision(cfg.groqKey, model, base64Image, mimeType);
       }
       else if (cfg.provider === 'gemini' || cfg.model.includes('gemini')) {
         extractedText = await callGeminiVision(cfg.apiKey, cfg.model, base64Image, mimeType);
@@ -737,7 +823,7 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
   const payload = {
     model: model,
     messages: [
-      { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+      { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
       { role: 'user', content: prompt },
     ],
     temperature: 0.2,
@@ -749,6 +835,50 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
   return extractJSONFromResponse(content);
 }
 
+// ✅ NEW: Groq API call - with reasoning_format: "hidden" to suppress thinking blocks
+async function callGroq(apiKey: string, model: string, prompt: string) {
+  const payload = {
+    model: model,
+    messages: [
+      { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.2,
+    max_tokens: 4000,
+    // ✅ Hide reasoning/thinking blocks from response
+    reasoning_format: 'hidden',
+  };
+
+  const data = await callAPIUniversal(GROQ_CONFIG.baseUrl, apiKey, payload);
+  const content = data.choices?.[0]?.message?.content || '';
+  // ✅ Also clean any remaining thinking blocks as fallback
+  const cleanedContent = cleanThinkingBlocks(content);
+  return extractJSONFromResponse(cleanedContent);
+}
+
+// ✅ NEW: Groq Vision API call
+async function callGroqVision(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
+  const payload = {
+    model: model,
+    messages: [
+      { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
+      { role: 'user', content: [
+        { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
+        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
+      ]},
+    ],
+    temperature: 0.1,
+    max_tokens: 2000,
+    // ✅ Hide reasoning/thinking blocks from response
+    reasoning_format: 'hidden',
+  };
+
+  const data = await callAPIUniversal(GROQ_CONFIG.baseUrl, apiKey, payload, true);
+  const content = data.choices?.[0]?.message?.content?.trim() || '';
+  // ✅ Also clean any remaining thinking blocks as fallback
+  return cleanThinkingBlocks(content);
+}
+
 // Mistral Vision - with strict prompt for mistral-medium-3-5
 async function callMistralVision(apiKey: string, model: string, base64Image: string, mimeType: string, isStrictMode: boolean = false): Promise<string> {
   const systemPrompt = isStrictMode
@@ -756,20 +886,20 @@ async function callMistralVision(apiKey: string, model: string, base64Image: str
 
 CRITICAL RULES - FOLLOW EXACTLY:
 1. Read EVERY symbol, number, operator, and variable carefully
-2. For integrals: Use \\int for single, \\iint for double, \\iiint for triple integrals
-3. For derivatives: Use \\frac{d}{dx} or \\frac{\\partial}{\\partial x} for partial derivatives
-4. For limits: Use \\lim_{x \\to a} format exactly
-5. For summation: Use \\sum_{i=1}^{n} format
-6. For fractions: Use \\frac{numerator}{denominator}
+2. For integrals: Use \int for single, \iint for double, \iiint for triple integrals
+3. For derivatives: Use \frac{d}{dx} or \frac{\partial}{\partial x} for partial derivatives
+4. For limits: Use \lim_{x \to a} format exactly
+5. For summation: Use \sum_{i=1}^{n} format
+6. For fractions: Use \frac{numerator}{denominator}
 7. For exponents: Use ^{} for superscripts, _{} for subscripts
-8. For Greek letters: Use \\alpha, \\beta, \\gamma, \\delta, \\theta, \\pi, \\sigma, etc.
-9. For matrices: Use \\begin{pmatrix} ... \\end{pmatrix}
-10. For square roots: Use \\sqrt{} or \\sqrt[n]{}
+8. For Greek letters: Use \alpha, \beta, \gamma, \delta, \theta, \pi, \sigma, etc.
+9. For matrices: Use \begin{pmatrix} ... \end{pmatrix}
+10. For square roots: Use \sqrt{} or \sqrt[n]{}
 11. NEVER guess - if unclear, output [UNCLEAR] for that part
 12. Output ONLY the LaTeX expression, nothing else
 13. NO explanations, NO markdown, NO text outside LaTeX
 14. Verify each symbol before outputting`
-    : 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.';
+    : 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.';
 
   const userPrompt = isStrictMode
     ? 'Extract the mathematical expression from this image as pure LaTeX. Be extremely careful with every symbol, operator, and notation. Output ONLY the LaTeX code.'
@@ -805,7 +935,7 @@ async function callCohereV2(apiKey: string, model: string, prompt: string) {
       messages: [
         { 
           role: 'system', 
-          content: 'You are an expert mathematics teacher. You MUST solve problems step by step with detailed explanations. You MUST respond in valid JSON format only. Use PURE LaTeX for equations (NO \\text{} or \\mbox{}). Example: \\int x^4 dx = \\frac{x^5}{5}. Do not include any text outside the JSON. No markdown code blocks. Just raw JSON.' 
+          content: 'You are an expert mathematics teacher. You MUST solve problems step by step with detailed explanations. You MUST respond in valid JSON format only. Use PURE LaTeX for equations (NO \text{} or \mbox{}). Example: \int x^4 dx = \frac{x^5}{5}. Do not include any text outside the JSON. No markdown code blocks. Just raw JSON.' 
         },
         { role: 'user', content: prompt },
       ],
@@ -842,7 +972,7 @@ async function callCohereV2Vision(apiKey: string, model: string, base64Image: st
       messages: [
         { 
           role: 'system', 
-          content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}. Return only the LaTeX, no explanation.' 
+          content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}. Return only the LaTeX, no explanation.' 
         },
         { 
           role: 'user', 
@@ -868,7 +998,7 @@ async function callOpenAIVisionCompatible(apiKey: string, model: string, baseUrl
   const payload = {
     model: model,
     messages: [
-      { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+      { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
       { role: 'user', content: [
         { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
         { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
@@ -893,7 +1023,7 @@ async function callGeminiVision(apiKey: string, model: string, base64Image: stri
         contents: [{
           role: 'user',
           parts: [
-            { text: 'You are an expert OCR system for mathematical equations. Look at this image and extract ALL mathematical text. Return ONLY the mathematical expression in PURE LaTeX format. Do NOT use \\text{} or \\mbox{}. Do NOT add any explanation, just the raw LaTeX.' },
+            { text: 'You are an expert OCR system for mathematical equations. Look at this image and extract ALL mathematical text. Return ONLY the mathematical expression in PURE LaTeX format. Do NOT use \text{} or \mbox{}. Do NOT add any explanation, just the raw LaTeX.' },
             { inlineData: { mimeType: mimeType, data: base64Image } },
           ],
         }],
@@ -920,7 +1050,7 @@ async function callOpenAIVision(apiKey: string, model: string, base64Image: stri
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } },
@@ -948,7 +1078,7 @@ async function callBasetenVision(apiKey: string, model: string, baseUrl: string,
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \\text{} or \\mbox{}.' },
+        { role: 'system', content: 'You are an expert OCR system for mathematical equations. Extract ONLY the mathematical expression in PURE LaTeX format. No \text{} or \mbox{}.' },
         { role: 'user', content: [
           { type: 'text', text: 'Extract the mathematical equation from this image as pure LaTeX:' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}`, detail: 'high' } },
@@ -976,7 +1106,7 @@ async function callBasetenDirect(apiKey: string, model: string, baseUrl: string,
     body: JSON.stringify({
       model: model,
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
@@ -1002,7 +1132,7 @@ async function callOpenAIDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' },
+        { role: 'system', content: 'You are an expert mathematics teacher. Solve problems step by step with detailed explanations. Always respond in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' },
         { role: 'user', content: prompt },
       ],
       response_format: { type: 'json_object' },
@@ -1022,7 +1152,7 @@ async function callGeminiDirect(apiKey: string, model: string, prompt: string) {
     body: JSON.stringify({
       contents: [{ 
         role: 'user', 
-        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \\text or \\mbox). Example: \\int x^4 dx = \\frac{x^5}{5}' }] 
+        parts: [{ text: prompt + '\n\nRespond ONLY in valid JSON format. Use PURE LaTeX for equations (NO \text or \mbox). Example: \int x^4 dx = \frac{x^5}{5}' }] 
       }],
       generationConfig: { temperature: 0.2, maxOutputTokens: 4000 },
     }),
@@ -1055,9 +1185,9 @@ Problem: ${problem}
 CRITICAL RULES:
 - Language: ${isAr ? 'Arabic' : 'English'}
 - Detail level: ${detailMap[detailLevel] || 'step-by-step'}
-- Use PURE LaTeX for equations (NO \\text{} or \\mbox{} wrappers)
-- Example good equation: \\int x^4 dx = \\frac{x^5}{5}
-- Example bad equation: \\text{integral of } x^4 \\text{ is } \\frac{x^5}{5}
+- Use PURE LaTeX for equations (NO \text{} or \mbox{} wrappers)
+- Example good equation: \int x^4 dx = \frac{x^5}{5}
+- Example bad equation: \text{integral of } x^4 \text{ is } \frac{x^5}{5}
 - Show all mathematical steps clearly
 - Include the name of each rule/law used
 - Verify the final answer
