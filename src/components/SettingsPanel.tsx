@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Key, Eye, EyeOff, Save, Check, AlertTriangle, Info, Server, Cpu, Zap } from 'lucide-react';
+import { Key, Eye, EyeOff, Save, Check, AlertTriangle, Info, Server, Cpu, Zap, Globe, Shield, Link } from 'lucide-react';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -23,9 +23,11 @@ interface NewProviderConfig {
   nameAr: string;
   keyStorage: string;
   modelStorage: string;
+  proxyStorage: string;
   baseUrl: string;
   color: string;
   badge?: string;
+  needsProxy?: boolean;
 }
 
 const AVAILABLE_MODELS: ModelConfig[] = [
@@ -94,6 +96,7 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     nameAr: 'سيريبراس',
     keyStorage: 'mathsolver_cerebras_key',
     modelStorage: 'mathsolver_cerebras_model',
+    proxyStorage: 'mathsolver_cerebras_proxy',
     baseUrl: 'https://api.cerebras.ai/v1',
     color: 'bg-gradient-to-br from-yellow-500 to-orange-600',
     badge: 'مجاني',
@@ -104,6 +107,7 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     nameAr: 'كوميت API',
     keyStorage: 'mathsolver_cometapi_key',
     modelStorage: 'mathsolver_cometapi_model',
+    proxyStorage: 'mathsolver_cometapi_proxy',
     baseUrl: 'https://api.cometapi.com/v1',
     color: 'bg-gradient-to-br from-cyan-500 to-blue-600',
     badge: 'جديد',
@@ -114,6 +118,7 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     nameAr: 'ميسترال AI',
     keyStorage: 'mathsolver_mistral_key',
     modelStorage: 'mathsolver_mistral_model',
+    proxyStorage: 'mathsolver_mistral_proxy',
     baseUrl: 'https://api.mistral.ai/v1',
     color: 'bg-gradient-to-br from-orange-400 to-amber-500',
     badge: 'جديد',
@@ -124,6 +129,7 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     nameAr: 'كوهير',
     keyStorage: 'mathsolver_cohere_key',
     modelStorage: 'mathsolver_cohere_model',
+    proxyStorage: 'mathsolver_cohere_proxy',
     baseUrl: 'https://api.cohere.ai/compatibility/v1',
     color: 'bg-gradient-to-br from-purple-600 to-pink-600',
     badge: 'جديد',
@@ -134,6 +140,7 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     nameAr: 'أوبن راوتر',
     keyStorage: 'mathsolver_openrouter_key',
     modelStorage: 'mathsolver_openrouter_model',
+    proxyStorage: 'mathsolver_openrouter_proxy',
     baseUrl: 'https://openrouter.ai/api/v1',
     color: 'bg-gradient-to-br from-slate-500 to-gray-700',
     badge: 'مجاني',
@@ -144,20 +151,23 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     nameAr: 'جروك',
     keyStorage: 'mathsolver_groq_key',
     modelStorage: 'mathsolver_groq_model',
+    proxyStorage: 'mathsolver_groq_proxy',
     baseUrl: 'https://api.groq.com/openai/v1',
     color: 'bg-gradient-to-br from-red-500 to-pink-600',
     badge: 'سريع ⚡',
+    needsProxy: true,
   },
-  // ✅ NEW: TokenGo Provider
   {
     id: 'tokengo',
     name: 'TokenGo',
     nameAr: 'توكين جو',
     keyStorage: 'mathsolver_tokengo_key',
     modelStorage: 'mathsolver_tokengo_model',
+    proxyStorage: 'mathsolver_tokengo_proxy',
     baseUrl: 'https://api.tokengo.com/v1',
     color: 'bg-gradient-to-br from-emerald-500 to-teal-600',
     badge: 'جديد',
+    needsProxy: true,
   },
 ];
 
@@ -170,29 +180,36 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [saved, setSaved] = useState(false);
   const [activeConfig, setActiveConfig] = useState<{model: string; hasKey: boolean}>({model: '', hasKey: false});
 
-  // New provider keys
+  // New provider keys & proxies
   const [cerebrasKey, setCerebrasKey] = useState('');
+  const [cerebrasProxy, setCerebrasProxy] = useState('');
   const [cometapiKey, setCometapiKey] = useState('');
+  const [cometapiProxy, setCometapiProxy] = useState('');
   const [mistralKey, setMistralKey] = useState('');
+  const [mistralProxy, setMistralProxy] = useState('');
   const [cohereKey, setCohereKey] = useState('');
+  const [cohereProxy, setCohereProxy] = useState('');
   const [openrouterKey, setOpenrouterKey] = useState('');
+  const [openrouterProxy, setOpenrouterProxy] = useState('');
   const [showCerebrasKey, setShowCerebrasKey] = useState(false);
   const [showCometapiKey, setShowCometapiKey] = useState(false);
   const [showMistralKey, setShowMistralKey] = useState(false);
   const [showCohereKey, setShowCohereKey] = useState(false);
   const [showOpenrouterKey, setShowOpenrouterKey] = useState(false);
 
-  // Groq key and model states
+  // Groq key, model & proxy states
   const [groqKey, setGroqKey] = useState('');
   const [groqModel, setGroqModel] = useState('');
+  const [groqProxy, setGroqProxy] = useState('');
   const [showGroqKey, setShowGroqKey] = useState(false);
 
   // OpenRouter model state
   const [openrouterModel, setOpenrouterModel] = useState('');
 
-  // ✅ NEW: TokenGo key and model states
+  // TokenGo key, model & proxy states
   const [tokengoKey, setTokengoKey] = useState('');
   const [tokengoModel, setTokengoModel] = useState('');
+  const [tokengoProxy, setTokengoProxy] = useState('');
   const [showTokengoKey, setShowTokengoKey] = useState(false);
 
   useEffect(() => {
@@ -207,21 +224,25 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setUseCustomUrl(savedUseCustom);
 
     setCerebrasKey(localStorage.getItem('mathsolver_cerebras_key') || '');
+    setCerebrasProxy(localStorage.getItem('mathsolver_cerebras_proxy') || '');
     setCometapiKey(localStorage.getItem('mathsolver_cometapi_key') || '');
+    setCometapiProxy(localStorage.getItem('mathsolver_cometapi_proxy') || '');
     setMistralKey(localStorage.getItem('mathsolver_mistral_key') || '');
+    setMistralProxy(localStorage.getItem('mathsolver_mistral_proxy') || '');
     setCohereKey(localStorage.getItem('mathsolver_cohere_key') || '');
+    setCohereProxy(localStorage.getItem('mathsolver_cohere_proxy') || '');
     setOpenrouterKey(localStorage.getItem('mathsolver_openrouter_key') || '');
+    setOpenrouterProxy(localStorage.getItem('mathsolver_openrouter_proxy') || '');
 
-    // Load Groq key and model
     setGroqKey(localStorage.getItem('mathsolver_groq_key') || '');
     setGroqModel(localStorage.getItem('mathsolver_groq_model') || '');
+    setGroqProxy(localStorage.getItem('mathsolver_groq_proxy') || '');
 
-    // Load OpenRouter model
     setOpenrouterModel(localStorage.getItem('mathsolver_openrouter_model') || '');
 
-    // ✅ NEW: Load TokenGo key and model
     setTokengoKey(localStorage.getItem('mathsolver_tokengo_key') || '');
     setTokengoModel(localStorage.getItem('mathsolver_tokengo_model') || '');
+    setTokengoProxy(localStorage.getItem('mathsolver_tokengo_proxy') || '');
 
     const info = getActiveConfig();
     setActiveConfig(info);
@@ -250,21 +271,25 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     localStorage.setItem('mathsolver_use_custom', useCustomUrl.toString());
 
     localStorage.setItem('mathsolver_cerebras_key', cerebrasKey);
+    localStorage.setItem('mathsolver_cerebras_proxy', cerebrasProxy);
     localStorage.setItem('mathsolver_cometapi_key', cometapiKey);
+    localStorage.setItem('mathsolver_cometapi_proxy', cometapiProxy);
     localStorage.setItem('mathsolver_mistral_key', mistralKey);
+    localStorage.setItem('mathsolver_mistral_proxy', mistralProxy);
     localStorage.setItem('mathsolver_cohere_key', cohereKey);
+    localStorage.setItem('mathsolver_cohere_proxy', cohereProxy);
     localStorage.setItem('mathsolver_openrouter_key', openrouterKey);
+    localStorage.setItem('mathsolver_openrouter_proxy', openrouterProxy);
 
-    // Save Groq key and model
     localStorage.setItem('mathsolver_groq_key', groqKey);
     localStorage.setItem('mathsolver_groq_model', groqModel);
+    localStorage.setItem('mathsolver_groq_proxy', groqProxy);
 
-    // Save OpenRouter model
     localStorage.setItem('mathsolver_openrouter_model', openrouterModel);
 
-    // ✅ NEW: Save TokenGo key and model
     localStorage.setItem('mathsolver_tokengo_key', tokengoKey);
     localStorage.setItem('mathsolver_tokengo_model', tokengoModel);
+    localStorage.setItem('mathsolver_tokengo_proxy', tokengoProxy);
 
     const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
     if (model) {
@@ -583,6 +608,24 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 setShowMistralKey;
               const hasKey = !!keyValue.trim();
 
+              // Proxy value & setter
+              const proxyValue =
+                provider.id === 'cerebras' ? cerebrasProxy :
+                provider.id === 'cometapi' ? cometapiProxy :
+                provider.id === 'cohere' ? cohereProxy :
+                provider.id === 'openrouter' ? openrouterProxy :
+                provider.id === 'groq' ? groqProxy :
+                provider.id === 'tokengo' ? tokengoProxy :
+                mistralProxy;
+              const setProxyValue =
+                provider.id === 'cerebras' ? setCerebrasProxy :
+                provider.id === 'cometapi' ? setCometapiProxy :
+                provider.id === 'cohere' ? setCohereProxy :
+                provider.id === 'openrouter' ? setOpenrouterProxy :
+                provider.id === 'groq' ? setGroqProxy :
+                provider.id === 'tokengo' ? setTokengoProxy :
+                setMistralProxy;
+
               return (
                 <div key={provider.id} className={`p-4 rounded-xl border-2 transition-all ${hasKey ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white'}`}>
                   <div className="flex items-center gap-3 mb-3">
@@ -628,7 +671,27 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     </button>
                   </div>
 
-                  {/* Model input for OpenRouter */}
+                  {/* ✅ NEW: CORS Proxy field for each provider */}
+                  {provider.needsProxy && (
+                    <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Link size={14} className="text-amber-600" />
+                        <span className="text-sm font-semibold text-amber-800">CORS Proxy (للكمبيوتر)</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={proxyValue}
+                        onChange={(e) => setProxyValue(e.target.value)}
+                        placeholder={`رابط Proxy لـ ${provider.nameAr}...`}
+                        className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
+                        dir="ltr"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        مثال: <code className="bg-gray-200 px-1 rounded">https://your-proxy.workers.dev</code>
+                      </p>
+                    </div>
+                  )}
+
                   {provider.id === 'openrouter' && (
                     <div className="mt-2">
                       <input
@@ -645,7 +708,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     </div>
                   )}
 
-                  {/* Model input for Groq */}
                   {provider.id === 'groq' && (
                     <div className="mt-2">
                       <input
@@ -662,7 +724,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     </div>
                   )}
 
-                  {/* ✅ NEW: Model input for TokenGo */}
                   {provider.id === 'tokengo' && (
                     <div className="mt-2">
                       <input
@@ -699,7 +760,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             <Info className="text-blue-600 flex-shrink-0 mt-0.5" size={18} />
             <div className="text-sm text-blue-800">
               <p className="font-semibold mb-1">🔒 الخصوصية والأمان</p>
-              <p>المفاتيح تُحفظ في متصفحك فقط (LocalStorage) ولا تُرفع على أي خادم. يتم إرسالها مباشرة للـ API من Backend.</p>
+              <p>المفاتيح تُحفظ في متصفحك فقط (LocalStorage) ولا تُرفع على أي خادم. يتم إرسالها مباشرة للـ API.</p>
             </div>
           </div>
         </div>
