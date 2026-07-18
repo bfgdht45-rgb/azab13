@@ -164,6 +164,25 @@ const GROQ_CONFIG: ProviderConfig = {
   badge: 'سريع ⚡',
 };
 
+// ✅ NEW: TokenGo Provider Config
+const TOKENGO_CONFIG: ProviderConfig = {
+  id: 'tokengo',
+  name: 'TokenGo',
+  nameAr: 'توكين جو',
+  baseUrl: 'https://api.tokengo.com/v1',
+  apiKey: '',
+  models: [],
+  preferredModels: [
+    'deepseek/deepseek-v4-pro',
+    'moonshotai/kimi-k2.6',
+    'z-ai/glm-5.2',
+    'deepseek/deepseek-v4-flash',
+    'qwen/qwen3.5-397b-a17b',
+  ],
+  color: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+  badge: 'جديد',
+};
+
 // ✅ نوع الإعدادات المخزنة
 interface StoredConfig {
   apiKey: string;
@@ -178,12 +197,14 @@ interface StoredConfig {
   cohereKey: string;
   openrouterKey: string;
   groqKey: string;
+  tokengoKey: string;
   cerebrasModel: string;
   cometapiModel: string;
   mistralModel: string;
   cohereModel: string;
   openrouterModel: string;
   groqModel: string;
+  tokengoModel: string;
 }
 
 // =====================================
@@ -205,6 +226,7 @@ function getStoredConfig(): StoredConfig {
     cohereKey: localStorage.getItem('mathsolver_cohere_key') || '',
     openrouterKey: localStorage.getItem('mathsolver_openrouter_key') || '',
     groqKey: localStorage.getItem('mathsolver_groq_key') || '',
+    tokengoKey: localStorage.getItem('mathsolver_tokengo_key') || '',
 
     cerebrasModel: localStorage.getItem('mathsolver_cerebras_model') || '',
     openrouterModel: localStorage.getItem('mathsolver_openrouter_model') || '',
@@ -212,6 +234,7 @@ function getStoredConfig(): StoredConfig {
     mistralModel: localStorage.getItem('mathsolver_mistral_model') || '',
     cohereModel: localStorage.getItem('mathsolver_cohere_model') || '',
     groqModel: localStorage.getItem('mathsolver_groq_model') || '',
+    tokengoModel: localStorage.getItem('mathsolver_tokengo_model') || '',
   };
 }
 
@@ -396,7 +419,7 @@ function extractCohereV2Text(data: any): string {
 export const mathSolverAPI = {
   hasApiKeys: (): boolean => {
     const cfg = getStoredConfig();
-    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey || cfg.openrouterKey || cfg.groqKey);
+    return !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey || cfg.openrouterKey || cfg.groqKey || cfg.tokengoKey);
   },
 
   getProviderInfo: () => {
@@ -424,13 +447,16 @@ export const mathSolverAPI = {
     } else if (cfg.provider === 'groq' && cfg.groqKey) {
       activeModel = cfg.groqModel || 'Groq Auto';
       activeProvider = 'groq';
+    } else if (cfg.provider === 'tokengo' && cfg.tokengoKey) {
+      activeModel = cfg.tokengoModel || 'TokenGo Auto';
+      activeProvider = 'tokengo';
     } else if (cfg.useCustom && cfg.customUrl) {
       activeProvider = 'custom';
       activeModel = cfg.model;
     }
 
     return {
-      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey || cfg.openrouterKey || cfg.groqKey),
+      hasKeys: !!(cfg.apiKey || cfg.cerebrasKey || cfg.cometapiKey || cfg.mistralKey || cfg.cohereKey || cfg.openrouterKey || cfg.groqKey || cfg.tokengoKey),
       provider: activeProvider,
       model: activeModel,
       baseUrl: cfg.useCustom && cfg.customUrl ? cfg.customUrl : cfg.baseUrl,
@@ -467,18 +493,25 @@ export const mathSolverAPI = {
     return fetchAvailableModels(OPENROUTER_CONFIG.baseUrl, cfg.openrouterKey);
   },
 
-  // ✅ NEW: Fetch Groq models
+  // ✅ Fetch Groq models
   fetchGroqModels: async (): Promise<string[]> => {
     const cfg = getStoredConfig();
     if (!cfg.groqKey) return [];
     return fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
   },
 
+  // ✅ NEW: Fetch TokenGo models
+  fetchTokengoModels: async (): Promise<string[]> => {
+    const cfg = getStoredConfig();
+    if (!cfg.tokengoKey) return [];
+    return fetchAvailableModels(TOKENGO_CONFIG.baseUrl, cfg.tokengoKey);
+  },
+
   solve: async (request: SolverRequest): Promise<SolverResponse> => {
     const startTime = Date.now();
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey && !cfg.openrouterKey && !cfg.groqKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey && !cfg.openrouterKey && !cfg.groqKey && !cfg.tokengoKey) {
       return {
         success: false,
         error: 'لم يتم إعداد مفاتيح API. افتح الإعدادات (⚙️) وأضف مفتاح.',
@@ -519,11 +552,17 @@ export const mathSolverAPI = {
         const model = cfg.openrouterModel || selectBestModel(models, OPENROUTER_CONFIG.preferredModels);
         result = await callOpenAICompatible(cfg.openrouterKey, model, OPENROUTER_CONFIG.baseUrl, prompt);
       }
-      // ✅ NEW: Groq provider
+      // Groq provider
       else if (cfg.provider === 'groq' && cfg.groqKey) {
         const models = await fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
         const model = cfg.groqModel || selectBestModel(models, GROQ_CONFIG.preferredModels);
         result = await callGroq(cfg.groqKey, model, prompt);
+      }
+      // ✅ NEW: TokenGo provider
+      else if (cfg.provider === 'tokengo' && cfg.tokengoKey) {
+        const models = await fetchAvailableModels(TOKENGO_CONFIG.baseUrl, cfg.tokengoKey);
+        const model = cfg.tokengoModel || selectBestModel(models, TOKENGO_CONFIG.preferredModels);
+        result = await callOpenAICompatible(cfg.tokengoKey, model, TOKENGO_CONFIG.baseUrl, prompt);
       }
       else if (cfg.provider === 'baseten' || cfg.baseUrl.includes('baseten')) {
         result = await callBasetenDirect(cfg.apiKey, cfg.model, cfg.baseUrl, prompt);
@@ -592,7 +631,7 @@ export const mathSolverAPI = {
   processImage: async (imageFile: File): Promise<OCRResult> => {
     const cfg = getStoredConfig();
 
-    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey && !cfg.openrouterKey && !cfg.groqKey) {
+    if (!cfg.apiKey && !cfg.cerebrasKey && !cfg.cometapiKey && !cfg.mistralKey && !cfg.cohereKey && !cfg.openrouterKey && !cfg.groqKey && !cfg.tokengoKey) {
       return {
         success: false,
         latex: '',
@@ -684,7 +723,7 @@ export const mathSolverAPI = {
         const model = cfg.openrouterModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
         extractedText = await callOpenAIVisionCompatible(cfg.openrouterKey, model, OPENROUTER_CONFIG.baseUrl, base64Image, mimeType);
       }
-      // ✅ NEW: Groq Vision
+      // Groq Vision
       else if (cfg.provider === 'groq' && cfg.groqKey) {
         const models = await fetchAvailableModels(GROQ_CONFIG.baseUrl, cfg.groqKey);
         const visionModels = models.filter((m: string) => 
@@ -695,6 +734,18 @@ export const mathSolverAPI = {
         );
         const model = cfg.groqModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
         extractedText = await callGroqVision(cfg.groqKey, model, base64Image, mimeType);
+      }
+      // ✅ NEW: TokenGo Vision
+      else if (cfg.provider === 'tokengo' && cfg.tokengoKey) {
+        const models = await fetchAvailableModels(TOKENGO_CONFIG.baseUrl, cfg.tokengoKey);
+        const visionModels = models.filter((m: string) => 
+          m.includes('vision') || m.includes('gpt-4o') || m.includes('gemini') || m.includes('claude')
+        );
+        const preferredVision = TOKENGO_CONFIG.preferredModels.filter(m => 
+          m.includes('vision') || m.includes('gpt-4o') || m.includes('gemini') || m.includes('claude')
+        );
+        const model = cfg.tokengoModel || selectBestModel(visionModels.length > 0 ? visionModels : models, preferredVision);
+        extractedText = await callOpenAIVisionCompatible(cfg.tokengoKey, model, TOKENGO_CONFIG.baseUrl, base64Image, mimeType);
       }
       else if (cfg.provider === 'gemini' || cfg.model.includes('gemini')) {
         extractedText = await callGeminiVision(cfg.apiKey, cfg.model, base64Image, mimeType);
@@ -835,7 +886,7 @@ async function callOpenAICompatible(apiKey: string, model: string, baseUrl: stri
   return extractJSONFromResponse(content);
 }
 
-// ✅ NEW: Groq API call - cleans thinking blocks from response
+// Groq API call - cleans thinking blocks from response
 async function callGroq(apiKey: string, model: string, prompt: string) {
   const payload = {
     model: model,
@@ -849,12 +900,12 @@ async function callGroq(apiKey: string, model: string, prompt: string) {
 
   const data = await callAPIUniversal(GROQ_CONFIG.baseUrl, apiKey, payload);
   const rawContent = data.choices?.[0]?.message?.content || '';
-  // ✅ Clean thinking blocks from response
+  // Clean thinking blocks from response
   const cleanedContent = cleanThinkingBlocks(rawContent);
   return extractJSONFromResponse(cleanedContent);
 }
 
-// ✅ NEW: Groq Vision API call
+// Groq Vision API call
 async function callGroqVision(apiKey: string, model: string, base64Image: string, mimeType: string): Promise<string> {
   const payload = {
     model: model,
@@ -871,7 +922,7 @@ async function callGroqVision(apiKey: string, model: string, base64Image: string
 
   const data = await callAPIUniversal(GROQ_CONFIG.baseUrl, apiKey, payload, true);
   const rawContent = data.choices?.[0]?.message?.content?.trim() || '';
-  // ✅ Clean thinking blocks from response
+  // Clean thinking blocks from response
   return cleanThinkingBlocks(rawContent);
 }
 
