@@ -138,7 +138,6 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     color: 'bg-gradient-to-br from-slate-500 to-gray-700',
     badge: 'مجاني',
   },
-  // ✅ NEW: Groq Provider
   {
     id: 'groq',
     name: 'Groq',
@@ -148,6 +147,17 @@ const NEW_PROVIDERS: NewProviderConfig[] = [
     baseUrl: 'https://api.groq.com/openai/v1',
     color: 'bg-gradient-to-br from-red-500 to-pink-600',
     badge: 'سريع ⚡',
+  },
+  // ✅ NEW: TokenGo Provider
+  {
+    id: 'tokengo',
+    name: 'TokenGo',
+    nameAr: 'توكين جو',
+    keyStorage: 'mathsolver_tokengo_key',
+    modelStorage: 'mathsolver_tokengo_model',
+    baseUrl: 'https://api.tokengo.com/v1',
+    color: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+    badge: 'جديد',
   },
 ];
 
@@ -172,13 +182,18 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [showCohereKey, setShowCohereKey] = useState(false);
   const [showOpenrouterKey, setShowOpenrouterKey] = useState(false);
 
-  // ✅ NEW: Groq key and model states
+  // Groq key and model states
   const [groqKey, setGroqKey] = useState('');
   const [groqModel, setGroqModel] = useState('');
   const [showGroqKey, setShowGroqKey] = useState(false);
 
-  // ✅ NEW: OpenRouter model state
+  // OpenRouter model state
   const [openrouterModel, setOpenrouterModel] = useState('');
+
+  // ✅ NEW: TokenGo key and model states
+  const [tokengoKey, setTokengoKey] = useState('');
+  const [tokengoModel, setTokengoModel] = useState('');
+  const [showTokengoKey, setShowTokengoKey] = useState(false);
 
   useEffect(() => {
     const savedKey = localStorage.getItem('mathsolver_api_key') || '';
@@ -197,12 +212,16 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setCohereKey(localStorage.getItem('mathsolver_cohere_key') || '');
     setOpenrouterKey(localStorage.getItem('mathsolver_openrouter_key') || '');
 
-    // ✅ NEW: Load Groq key and model
+    // Load Groq key and model
     setGroqKey(localStorage.getItem('mathsolver_groq_key') || '');
     setGroqModel(localStorage.getItem('mathsolver_groq_model') || '');
 
-    // ✅ Load OpenRouter model
+    // Load OpenRouter model
     setOpenrouterModel(localStorage.getItem('mathsolver_openrouter_model') || '');
+
+    // ✅ NEW: Load TokenGo key and model
+    setTokengoKey(localStorage.getItem('mathsolver_tokengo_key') || '');
+    setTokengoModel(localStorage.getItem('mathsolver_tokengo_model') || '');
 
     const info = getActiveConfig();
     setActiveConfig(info);
@@ -217,9 +236,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     const hasCohere = !!(localStorage.getItem('mathsolver_cohere_key') || '').trim();
     const hasOpenrouter = !!(localStorage.getItem('mathsolver_openrouter_key') || '').trim();
     const hasGroq = !!(localStorage.getItem('mathsolver_groq_key') || '').trim();
+    const hasTokengo = !!(localStorage.getItem('mathsolver_tokengo_key') || '').trim();
     return { 
       model: savedModel, 
-      hasKey: !!savedKey.trim() || hasCerebras || hasCometapi || hasMistral || hasCohere || hasOpenrouter || hasGroq 
+      hasKey: !!savedKey.trim() || hasCerebras || hasCometapi || hasMistral || hasCohere || hasOpenrouter || hasGroq || hasTokengo
     };
   };
 
@@ -235,12 +255,16 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     localStorage.setItem('mathsolver_cohere_key', cohereKey);
     localStorage.setItem('mathsolver_openrouter_key', openrouterKey);
 
-    // ✅ NEW: Save Groq key and model
+    // Save Groq key and model
     localStorage.setItem('mathsolver_groq_key', groqKey);
     localStorage.setItem('mathsolver_groq_model', groqModel);
 
-    // ✅ Save OpenRouter model
+    // Save OpenRouter model
     localStorage.setItem('mathsolver_openrouter_model', openrouterModel);
+
+    // ✅ NEW: Save TokenGo key and model
+    localStorage.setItem('mathsolver_tokengo_key', tokengoKey);
+    localStorage.setItem('mathsolver_tokengo_model', tokengoModel);
 
     const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
     if (model) {
@@ -249,23 +273,25 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
 
     // Priority: first non-empty key sets the provider
-    if (cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim() && !groqKey.trim()) {
+    if (cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim() && !groqKey.trim() && !tokengoKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cerebras');
-    } else if (cometapiKey.trim() && !cerebrasKey.trim() && !mistralKey.trim() && !cohereKey.trim() && !groqKey.trim()) {
+    } else if (cometapiKey.trim() && !cerebrasKey.trim() && !mistralKey.trim() && !cohereKey.trim() && !groqKey.trim() && !tokengoKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cometapi');
-    } else if (mistralKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !cohereKey.trim() && !groqKey.trim()) {
+    } else if (mistralKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !cohereKey.trim() && !groqKey.trim() && !tokengoKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'mistral');
-    } else if (cohereKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !openrouterKey.trim() && !groqKey.trim()) {
+    } else if (cohereKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !openrouterKey.trim() && !groqKey.trim() && !tokengoKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'cohere');
-    } else if (openrouterKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim() && !groqKey.trim()) {
+    } else if (openrouterKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim() && !groqKey.trim() && !tokengoKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'openrouter');
-    } else if (groqKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim() && !openrouterKey.trim()) {
+    } else if (groqKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim() && !openrouterKey.trim() && !tokengoKey.trim()) {
       localStorage.setItem('mathsolver_provider', 'groq');
+    } else if (tokengoKey.trim() && !cerebrasKey.trim() && !cometapiKey.trim() && !mistralKey.trim() && !cohereKey.trim() && !openrouterKey.trim() && !groqKey.trim()) {
+      localStorage.setItem('mathsolver_provider', 'tokengo');
     }
 
     setActiveConfig({ 
       model: selectedModel, 
-      hasKey: !!apiKey.trim() || !!cerebrasKey.trim() || !!cometapiKey.trim() || !!mistralKey.trim() || !!cohereKey.trim() || !!openrouterKey.trim() || !!groqKey.trim() 
+      hasKey: !!apiKey.trim() || !!cerebrasKey.trim() || !!cometapiKey.trim() || !!mistralKey.trim() || !!cohereKey.trim() || !!openrouterKey.trim() || !!groqKey.trim() || !!tokengoKey.trim()
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -283,6 +309,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'mistral': return 'Mistral AI';
       case 'cohere': return 'Cohere';
       case 'groq': return 'Groq';
+      case 'tokengo': return 'TokenGo';
       default: return provider;
     }
   };
@@ -297,6 +324,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'mistral': return 'https://console.mistral.ai/api-keys/';
       case 'cohere': return 'https://dashboard.cohere.com/api-keys';
       case 'groq': return 'https://console.groq.com/keys';
+      case 'tokengo': return 'https://azab13.vercel.app/';
       default: return '#';
     }
   };
@@ -309,6 +337,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       case 'cohere': return 'Ch';
       case 'openrouter': return 'OR';
       case 'groq': return 'Gq';
+      case 'tokengo': return 'TG';
       default: return id.substring(0, 2).toUpperCase();
     }
   };
@@ -526,6 +555,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 provider.id === 'cohere' ? cohereKey :
                 provider.id === 'openrouter' ? openrouterKey :
                 provider.id === 'groq' ? groqKey :
+                provider.id === 'tokengo' ? tokengoKey :
                 mistralKey;
               const setKeyValue = 
                 provider.id === 'cerebras' ? setCerebrasKey : 
@@ -533,6 +563,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 provider.id === 'cohere' ? setCohereKey :
                 provider.id === 'openrouter' ? setOpenrouterKey :
                 provider.id === 'groq' ? setGroqKey :
+                provider.id === 'tokengo' ? setTokengoKey :
                 setMistralKey;
               const showKeyValue = 
                 provider.id === 'cerebras' ? showCerebrasKey : 
@@ -540,6 +571,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 provider.id === 'cohere' ? showCohereKey :
                 provider.id === 'openrouter' ? showOpenrouterKey :
                 provider.id === 'groq' ? showGroqKey :
+                provider.id === 'tokengo' ? showTokengoKey :
                 showMistralKey;
               const setShowKeyValue = 
                 provider.id === 'cerebras' ? setShowCerebrasKey : 
@@ -547,6 +579,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 provider.id === 'cohere' ? setShowCohereKey :
                 provider.id === 'openrouter' ? setShowOpenrouterKey :
                 provider.id === 'groq' ? setShowGroqKey :
+                provider.id === 'tokengo' ? setShowTokengoKey :
                 setShowMistralKey;
               const hasKey = !!keyValue.trim();
 
@@ -595,7 +628,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     </button>
                   </div>
 
-                  {/* ✅ Model input for OpenRouter */}
+                  {/* Model input for OpenRouter */}
                   {provider.id === 'openrouter' && (
                     <div className="mt-2">
                       <input
@@ -612,7 +645,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     </div>
                   )}
 
-                  {/* ✅ NEW: Model input for Groq */}
+                  {/* Model input for Groq */}
                   {provider.id === 'groq' && (
                     <div className="mt-2">
                       <input
@@ -625,6 +658,23 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         اتركه فارغاً لاستخدام الموديل الافتراضي (llama-4-scout)
+                      </p>
+                    </div>
+                  )}
+
+                  {/* ✅ NEW: Model input for TokenGo */}
+                  {provider.id === 'tokengo' && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        value={tokengoModel}
+                        onChange={(e) => setTokengoModel(e.target.value)}
+                        placeholder="اسم الموديل (مثال: deepseek/deepseek-v4-pro)"
+                        className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all font-mono text-sm"
+                        dir="ltr"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        اتركه فارغاً لاستخدام الموديل الافتراضي (deepseek-v4-pro)
                       </p>
                     </div>
                   )}
